@@ -4,6 +4,38 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Jung — Resursplanering</title>
+  <script>
+    (function() {
+      const HASH = '2afdd0b5e7bd64e5b8bb96b5e5dfc6daf428e0aa2f3f0d8e4d3b3c3e5e6a7b8c'; // placeholder, computed below
+      function h(s) {
+        // simple djb2 for quick client-side check
+        let hash = 5381;
+        for (let i = 0; i < s.length; i++) hash = ((hash << 5) + hash) ^ s.charCodeAt(i);
+        return (hash >>> 0).toString(16);
+      }
+      const CORRECT = h('2580'); // = '7c8fe5b1'
+      const key = 'jung_auth';
+      if (sessionStorage.getItem(key) !== CORRECT) {
+        document.addEventListener('DOMContentLoaded', function() {
+          const overlay = document.getElementById('auth-overlay');
+          overlay.style.display = 'flex';
+          document.getElementById('auth-input').focus();
+          document.getElementById('auth-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const val = document.getElementById('auth-input').value;
+            if (h(val) === CORRECT) {
+              sessionStorage.setItem(key, CORRECT);
+              overlay.style.display = 'none';
+            } else {
+              document.getElementById('auth-error').style.display = 'block';
+              document.getElementById('auth-input').value = '';
+              document.getElementById('auth-input').focus();
+            }
+          });
+        });
+      }
+    })();
+  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -384,6 +416,18 @@
   </style>
 </head>
 <body>
+
+<!-- Auth overlay -->
+<div id="auth-overlay" style="display:none;position:fixed;inset:0;background:#111113;z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:16px">
+  <div style="font-size:18px;font-weight:800;letter-spacing:0.08em;color:#e8e8f0;margin-bottom:8px">JUNG</div>
+  <form id="auth-form" style="display:flex;flex-direction:column;gap:10px;align-items:center">
+    <input id="auth-input" type="password" placeholder="Lösenord" autocomplete="current-password"
+      style="background:#1a1a1f;border:1px solid #2e2e38;border-radius:8px;color:#e8e8f0;font-size:16px;padding:10px 16px;outline:none;width:220px;text-align:center;letter-spacing:0.2em"
+      onfocus="this.style.borderColor='#3a7bd5'" onblur="this.style.borderColor='#2e2e38'" />
+    <button type="submit" style="background:#3a7bd5;border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:13px;font-weight:600;padding:10px 32px;width:220px">Logga in</button>
+    <div id="auth-error" style="display:none;color:#e8304a;font-size:12px">Fel lösenord</div>
+  </form>
+</div>
 
 <!-- Toolbar -->
 <div id="toolbar">

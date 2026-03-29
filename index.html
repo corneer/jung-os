@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jung — Resursplanering</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #111113;
+      --surface: #1a1a1f;
+      --surface2: #222228;
+      --border: #2e2e38;
+      --border2: #3a3a48;
+      --text: #e8e8f0;
+      --text2: #9090a8;
+      --text3: #5a5a72;
+      --accent: #e8304a;
+      --accent2: #c02040;
+      --green: #2d9e6e;
+      --green2: #1a7a50;
+      --amber: #d4921a;
+      --blue: #3a7bd5;
+      --dot: #2a2a35;
+      --dot-size: 1.5px;
+      --dot-gap: 24px;
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      font-size: 13px;
+      color: var(--text);
+      user-select: none;
+    }
+
+    /* ── Toolbar ─────────────────────────────────── */
+    #toolbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 48px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 16px;
+      z-index: 1000;
+    }
+
+    #toolbar .logo {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: var(--text);
+    }
+
+    #toolbar .divider {
+      width: 1px;
+      height: 20px;
+      background: var(--border);
+    }
+
+    #toolbar .tool-group {
+      display: flex;
+      gap: 4px;
+    }
+
+    .tool-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      color: var(--text2);
+      cursor: pointer;
+      padding: 5px 10px;
+      font-size: 12px;
+      transition: all 0.12s;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .tool-btn:hover { background: var(--surface2); color: var(--text); border-color: var(--border); }
+    .tool-btn.active { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+
+    #zoom-display {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--text3);
+      min-width: 48px;
+      text-align: right;
+    }
+
+    /* ── Canvas ──────────────────────────────────── */
+    #canvas-wrap {
+      position: fixed;
+      top: 48px; left: 0; right: 0; bottom: 0;
+      overflow: hidden;
+      cursor: grab;
+    }
+    #canvas-wrap.grabbing { cursor: grabbing; }
+    #canvas-wrap.node-dragging { cursor: default; }
+
+    #canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 8000px;
+      height: 6000px;
+      transform-origin: 0 0;
+    }
+
+    /* Dotted background */
+    #canvas::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(circle, var(--dot) var(--dot-size), transparent var(--dot-size));
+      background-size: var(--dot-gap) var(--dot-gap);
+      pointer-events: none;
+    }
+
+    /* ── Nodes ───────────────────────────────────── */
+    .node {
+      position: absolute;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+      transition: box-shadow 0.15s;
+      cursor: default;
+    }
+    .node:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px var(--border2); }
+    .node.selected { box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 2px var(--blue); }
+
+    .node-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 14px 10px;
+      border-bottom: 1px solid var(--border);
+      cursor: grab;
+    }
+    .node-header:active { cursor: grabbing; }
+
+    .node-icon {
+      width: 24px; height: 24px;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .node-title {
+      font-weight: 600;
+      font-size: 13px;
+      flex: 1;
+    }
+    .node-subtitle {
+      font-size: 11px;
+      color: var(--text3);
+    }
+
+    .node-body { padding: 12px 14px; }
+
+    /* ── Badge / chips ───────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .badge-red    { background: rgba(232,48,74,0.15); color: #e8304a; }
+    .badge-green  { background: rgba(45,158,110,0.15); color: #2d9e6e; }
+    .badge-amber  { background: rgba(212,146,26,0.15); color: #d4921a; }
+    .badge-blue   { background: rgba(58,123,213,0.15); color: #6aa0f0; }
+    .badge-gray   { background: var(--surface2); color: var(--text2); }
+
+    /* ── Node: Weekly planner ────────────────────── */
+    .week-node { width: 420px; }
+
+    .week-grid {
+      display: grid;
+      grid-template-columns: 140px repeat(5, 1fr);
+      gap: 0;
+      font-size: 11px;
+    }
+    .week-grid .col-head {
+      padding: 6px 8px;
+      color: var(--text3);
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .week-grid .col-head:first-child { text-align: left; }
+    .week-grid .row-label {
+      padding: 8px 8px;
+      color: var(--text2);
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+    }
+    .week-grid .row-label .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .week-grid .cell {
+      padding: 6px 4px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      border-left: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .week-grid .cell:last-child { border-right: none; }
+
+    .fraction-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 6px;
+      color: var(--text2);
+      cursor: pointer;
+      padding: 3px 7px;
+      font-size: 10px;
+      font-weight: 600;
+      transition: all 0.1s;
+      width: 44px;
+    }
+    .fraction-btn:hover { border-color: var(--blue); color: var(--text); background: rgba(58,123,213,0.1); }
+    .fraction-btn.filled { background: rgba(45,158,110,0.2); border-color: var(--green); color: var(--green); }
+    .fraction-btn.half   { background: rgba(212,146,26,0.15); border-color: var(--amber); color: var(--amber); }
+
+    .week-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0 0;
+      border-top: 1px solid var(--border);
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--text2);
+    }
+    .week-total strong { color: var(--text); }
+
+    /* ── Node: Project list ──────────────────────── */
+    .project-node { width: 480px; }
+
+    .proj-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+    }
+    .proj-row:last-child { border-bottom: none; }
+    .proj-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .proj-name { flex: 1; font-weight: 500; }
+    .proj-client { color: var(--text3); font-size: 11px; min-width: 80px; }
+    .proj-nr { color: var(--text3); font-size: 10px; font-family: monospace; min-width: 68px; text-align: right; }
+
+    /* ── Node: Resource chart ────────────────────── */
+    .resource-node { width: 520px; }
+
+    .person-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .person-row:last-child { border-bottom: none; }
+    .avatar {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text2);
+      flex-shrink: 0;
+    }
+    .person-name { font-size: 12px; font-weight: 500; min-width: 120px; }
+    .bar-wrap { flex: 1; background: var(--surface2); border-radius: 4px; height: 8px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+    .person-pct { font-size: 11px; color: var(--text2); min-width: 32px; text-align: right; }
+    .person-role { font-size: 10px; color: var(--text3); min-width: 70px; }
+
+    /* ── Node: Vacation ──────────────────────────── */
+    .leave-node { width: 380px; }
+
+    .leave-cal {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 3px;
+      margin-bottom: 10px;
+    }
+    .cal-month { font-size: 9px; color: var(--text3); text-align: center; padding-bottom: 2px; letter-spacing: 0.03em; }
+    .cal-bar { height: 14px; border-radius: 3px; background: var(--surface2); position: relative; overflow: hidden; }
+    .cal-bar .fill { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+
+    /* ── Connection lines ────────────────────────── */
+    #connections-svg {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      overflow: visible;
+    }
+    .conn-line {
+      fill: none;
+      stroke: var(--border2);
+      stroke-width: 1.5;
+      stroke-dasharray: 4 4;
+      opacity: 0.6;
+    }
+
+    /* ── Mini map ────────────────────────────────── */
+    #minimap {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      width: 180px;
+      height: 120px;
+      background: rgba(26,26,31,0.92);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      z-index: 1000;
+    }
+    #minimap-canvas { width: 100%; height: 100%; }
+
+    /* ── Context menu ────────────────────────────── */
+    #ctx-menu {
+      position: fixed;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px;
+      z-index: 2000;
+      min-width: 160px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      display: none;
+    }
+    .ctx-item {
+      padding: 7px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--text2);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ctx-item:hover { background: var(--surface2); color: var(--text); }
+    .ctx-sep { height: 1px; background: var(--border); margin: 3px 0; }
+
+    /* ── Tooltip ─────────────────────────────────── */
+    .tip {
+      position: fixed;
+      background: rgba(10,10,14,0.95);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 4px 10px;
+      font-size: 11px;
+      color: var(--text);
+      pointer-events: none;
+      z-index: 3000;
+      display: none;
+    }
+
+    /* ── Scrollbars ──────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<!-- Toolbar -->
+<div id="toolbar">
+  <span class="logo">JUNG</span>
+  <div class="divider"></div>
+  <div class="tool-group">
+    <button class="tool-btn active" id="btn-select" title="Välj (V)">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 1l8 5-4.5 1L4 11 2 1z" fill="currentColor"/></svg>
+      Välj
+    </button>
+    <button class="tool-btn" id="btn-hand" title="Panorera (H)">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="4" width="2" height="7" rx="1" fill="currentColor"/><rect x="4" y="2" width="2" height="9" rx="1" fill="currentColor"/><rect x="7" y="3" width="2" height="8" rx="1" fill="currentColor"/><rect x="10" y="4" width="1.5" height="7" rx="0.75" fill="currentColor"/></svg>
+      Panorera
+    </button>
+  </div>
+  <div class="divider"></div>
+  <button class="tool-btn" id="btn-fit">Anpassa vy</button>
+  <button class="tool-btn" id="btn-new-node">+ Nod</button>
+  <span id="zoom-display">100%</span>
+</div>
+
+<!-- Canvas -->
+<div id="canvas-wrap">
+  <div id="canvas">
+    <svg id="connections-svg"></svg>
+
+    <!-- NODE 1: Veckovy / Tidfördelning ─────────────────────────── -->
+    <div class="node week-node" id="node-week" style="left:300px; top:200px">
+      <div class="node-header" data-node-id="node-week">
+        <div class="node-icon" style="background:rgba(58,123,213,0.15)">📅</div>
+        <div>
+          <div class="node-title">Veckovy · v.14</div>
+          <div class="node-subtitle">Joel Cornéer · 31 mar – 4 apr</div>
+        </div>
+        <span class="badge badge-blue" style="margin-left:auto">Aktiv</span>
+      </div>
+      <div class="node-body">
+        <div class="week-grid" id="week-grid">
+          <div class="col-head">Projekt</div>
+          <div class="col-head">MÅN</div>
+          <div class="col-head">TIS</div>
+          <div class="col-head">ONS</div>
+          <div class="col-head">TOR</div>
+          <div class="col-head">FRE</div>
+        </div>
+
+        <div class="week-total" style="margin-top:10px">
+          <span>Veckokapacitet</span>
+          <strong id="week-summary">0 / 5 dagar allokerade</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- NODE 2: Projekt ──────────────────────────────────────────── -->
+    <div class="node project-node" id="node-projects" style="left:780px; top:200px">
+      <div class="node-header" data-node-id="node-projects">
+        <div class="node-icon" style="background:rgba(45,158,110,0.15)">📋</div>
+        <div>
+          <div class="node-title">Aktiva projekt</div>
+          <div class="node-subtitle">167 totalt · 156 saknar periodisering</div>
+        </div>
+        <span class="badge badge-red" style="margin-left:auto">69 saknar perioder</span>
+      </div>
+      <div class="node-body">
+        <div class="proj-row">
+          <div class="proj-dot" style="background:#3a7bd5"></div>
+          <span class="proj-name">Almedalen 2026</span>
+          <span class="proj-client">Volvo</span>
+          <span class="badge badge-green">Aktiv</span>
+          <span class="proj-nr">VOLV-AL26</span>
+        </div>
+        <div class="proj-row">
+          <div class="proj-dot" style="background:#e8304a"></div>
+          <span class="proj-name">Blueprint revision</span>
+          <span class="proj-client">Volvo Cars</span>
+          <span class="badge badge-red">Saknar period</span>
+          <span class="proj-nr">VOLV 0114</span>
+        </div>
+        <div class="proj-row">
+          <div class="proj-dot" style="background:#2d9e6e"></div>
+          <span class="proj-name">Audiobooks marknad kampanj</span>
+          <span class="proj-client">Spotify</span>
+          <span class="badge badge-green">Aktiv</span>
+          <span class="proj-nr">SPOT 0159</span>
+        </div>
+        <div class="proj-row">
+          <div class="proj-dot" style="background:#d4921a"></div>
+          <span class="proj-name">Grammis branding event</span>
+          <span class="proj-client">Spotify</span>
+          <span class="badge badge-amber">Pausad</span>
+          <span class="proj-nr">SPOT 0175</span>
+        </div>
+        <div class="proj-row">
+          <div class="proj-dot" style="background:#9b59b6"></div>
+          <span class="proj-name">Pophouse Retainer</span>
+          <span class="proj-client">TAPT</span>
+          <span class="badge badge-green">Aktiv</span>
+          <span class="proj-nr">TAPT 0001</span>
+        </div>
+        <div class="proj-row">
+          <div class="proj-dot" style="background:#e8304a"></div>
+          <span class="proj-name">Neko Health</span>
+          <span class="proj-client">TAPT</span>
+          <span class="badge badge-red">Saknar period</span>
+          <span class="proj-nr">TAPT 0006</span>
+        </div>
+        <div class="proj-row" style="border:none; padding-bottom:0">
+          <div class="proj-dot" style="background:#3a7bd5"></div>
+          <span class="proj-name">Pågående test 2</span>
+          <span class="proj-client">Spendrups</span>
+          <span class="badge badge-green">Aktiv</span>
+          <span class="proj-nr">HEMA 0002</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- NODE 3: Resursbeläggning ─────────────────────────────────── -->
+    <div class="node resource-node" id="node-resources" style="left:300px; top:680px">
+      <div class="node-header" data-node-id="node-resources">
+        <div class="node-icon" style="background:rgba(212,146,26,0.15)">👥</div>
+        <div>
+          <div class="node-title">Resursbeläggning</div>
+          <div class="node-subtitle">Närmaste månaden · 38 aktiva</div>
+        </div>
+        <span class="badge badge-amber" style="margin-left:auto">1% beläggning</span>
+      </div>
+      <div class="node-body">
+        <div class="person-row">
+          <div class="avatar">JC</div>
+          <span class="person-name">Joel Cornéer</span>
+          <span class="person-role">Kreativ</span>
+          <div class="bar-wrap"><div class="bar-fill" style="width:62%;background:#3a7bd5"></div></div>
+          <span class="person-pct">62%</span>
+        </div>
+        <div class="person-row">
+          <div class="avatar">AS</div>
+          <span class="person-name">Anna v. Stockenström</span>
+          <span class="person-role">Klient</span>
+          <div class="bar-wrap"><div class="bar-fill" style="width:47%;background:#2d9e6e"></div></div>
+          <span class="person-pct">47%</span>
+        </div>
+        <div class="person-row">
+          <div class="avatar">JS</div>
+          <span class="person-name">Jonas Sevenius</span>
+          <span class="person-role">Strategi</span>
+          <div class="bar-wrap"><div class="bar-fill" style="width:26%;background:#d4921a"></div></div>
+          <span class="person-pct">26%</span>
+        </div>
+        <div class="person-row">
+          <div class="avatar">MS</div>
+          <span class="person-name">Mårten Strassburg</span>
+          <span class="person-role">Strategi</span>
+          <div class="bar-wrap"><div class="bar-fill" style="width:15%;background:#d4921a"></div></div>
+          <span class="person-pct">15%</span>
+        </div>
+        <div class="person-row">
+          <div class="avatar">MA</div>
+          <span class="person-name">Martin Abrahamsson</span>
+          <span class="person-role">Kreativ</span>
+          <div class="bar-wrap"><div class="bar-fill" style="width:8%;background:#e8304a"></div></div>
+          <span class="person-pct">8%</span>
+        </div>
+        <div class="person-row" style="border:none;padding-bottom:0">
+          <div class="avatar">NK</div>
+          <span class="person-name">+ 33 till</span>
+          <span class="person-role"></span>
+          <div class="bar-wrap"><div class="bar-fill" style="width:0%;background:#3a7bd5"></div></div>
+          <span class="person-pct" style="color:var(--text3)">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- NODE 4: Semester & Frånvaro ─────────────────────────────── -->
+    <div class="node leave-node" id="node-leave" style="left:880px; top:680px">
+      <div class="node-header" data-node-id="node-leave">
+        <div class="node-icon" style="background:rgba(155,89,182,0.15)">🏖</div>
+        <div>
+          <div class="node-title">Semester & Frånvaro</div>
+          <div class="node-subtitle">2026 · Hela året</div>
+        </div>
+      </div>
+      <div class="node-body">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:6px;display:flex;gap:12px">
+          <span>🟡 Semester</span>
+          <span style="color:#9b59b6">● Föräldraledighet</span>
+          <span style="color:#3a7bd5">● Tjänstledig</span>
+        </div>
+        <div class="leave-cal" id="leave-cal"></div>
+        <div style="border-top:1px solid var(--border);padding-top:10px;font-size:11px;color:var(--text2)">
+          <div style="display:flex;justify-content:space-between">
+            <span>Marita Kuntonen</span>
+            <span style="color:var(--amber)">Semester v.12–16</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:4px">
+            <span>Victoria Westöö</span>
+            <span style="color:var(--text3)">Ansökt v.14</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /canvas -->
+</div><!-- /canvas-wrap -->
+
+<!-- Minimap -->
+<canvas id="minimap-canvas" width="180" height="120"></canvas>
+<div id="minimap" style="padding:0;display:flex;align-items:center;justify-content:center">
+  <canvas id="mm" width="178" height="118"></canvas>
+</div>
+
+<!-- Context menu -->
+<div id="ctx-menu">
+  <div class="ctx-item" id="ctx-new-week">📅 Ny veckovy-nod</div>
+  <div class="ctx-item" id="ctx-new-proj">📋 Ny projektlista-nod</div>
+  <div class="ctx-item" id="ctx-new-res">👥 Ny resurs-nod</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" id="ctx-fit">Anpassa vy</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" id="ctx-zoom-in">Zooma in</div>
+  <div class="ctx-item" id="ctx-zoom-out">Zooma ut</div>
+</div>
+
+<div class="tip" id="tip"></div>
+
+<script>
+/* ══════════════════════════════════════════════════════
+   DATA
+══════════════════════════════════════════════════════ */
+const PROJECTS = [
+  { id:'almedalen', name:'Almedalen 2026',      client:'Volvo',     color:'#3a7bd5' },
+  { id:'blueprint', name:'Blueprint revision',  client:'Volvo Cars',color:'#e8304a' },
+  { id:'audiobooks',name:'Audiobooks kampanj',  client:'Spotify',   color:'#2d9e6e' },
+  { id:'grammis',   name:'Grammis event',       client:'Spotify',   color:'#d4921a' },
+  { id:'pophouse',  name:'Pophouse Retainer',   client:'TAPT',      color:'#9b59b6' },
+  { id:'neko',      name:'Neko Health',         client:'TAPT',      color:'#e87050' },
+  { id:'test2',     name:'Pågående test 2',     client:'Spendrups', color:'#3a7bd5' },
+];
+
+const DAYS = ['MÅN','TIS','ONS','TOR','FRE'];
+const FRACTIONS = [
+  { label:'—', value:0, cls:'' },
+  { label:'¼', value:0.25, cls:'quarter' },
+  { label:'½', value:0.5, cls:'half' },
+  { label:'¾', value:0.75, cls:'three-q' },
+  { label:'1', value:1, cls:'filled' },
+];
+
+// allocation[projectId][dayIndex] = fractionIndex (0-4)
+const allocation = {};
+PROJECTS.forEach(p => { allocation[p.id] = [0,0,0,0,0]; });
+
+/* ══════════════════════════════════════════════════════
+   WEEK GRID BUILD
+══════════════════════════════════════════════════════ */
+function buildWeekGrid() {
+  const grid = document.getElementById('week-grid');
+  // Remove old rows
+  [...grid.querySelectorAll('.week-proj-row')].forEach(r => r.remove());
+
+  PROJECTS.forEach(proj => {
+    // Label
+    const label = document.createElement('div');
+    label.className = 'row-label week-proj-row';
+    label.innerHTML = `<div class="dot" style="background:${proj.color}"></div>${proj.name}`;
+    grid.appendChild(label);
+
+    // Cells
+    DAYS.forEach((_, di) => {
+      const cell = document.createElement('div');
+      cell.className = 'cell week-proj-row';
+      const btn = document.createElement('button');
+      btn.className = 'fraction-btn';
+      const fi = allocation[proj.id][di];
+      const frac = FRACTIONS[fi];
+      btn.textContent = frac.label === '—' ? '—' : frac.label;
+      if (frac.value >= 1) btn.classList.add('filled');
+      else if (frac.value >= 0.5) btn.classList.add('half');
+      btn.title = `${proj.name} ${DAYS[di]}: ${Math.round(frac.value*100)}%`;
+      btn.addEventListener('click', () => {
+        allocation[proj.id][di] = (allocation[proj.id][di] + 1) % FRACTIONS.length;
+        buildWeekGrid();
+        updateWeekSummary();
+      });
+      cell.appendChild(btn);
+      grid.appendChild(cell);
+    });
+  });
+  updateWeekSummary();
+}
+
+function updateWeekSummary() {
+  let total = 0;
+  PROJECTS.forEach(p => {
+    DAYS.forEach((_, di) => {
+      total += FRACTIONS[allocation[p.id][di]].value;
+    });
+  });
+  const el = document.getElementById('week-summary');
+  const pct = Math.round((total / 5) * 100);
+  el.textContent = `${total.toFixed(1)} / 5.0 dagar allokerade (${pct}%)`;
+  el.style.color = pct > 100 ? 'var(--accent)' : pct >= 80 ? 'var(--green)' : 'var(--text)';
+}
+
+/* ══════════════════════════════════════════════════════
+   LEAVE CALENDAR
+══════════════════════════════════════════════════════ */
+function buildLeaveCalendar() {
+  const cal = document.getElementById('leave-cal');
+  const months = ['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
+  const leaveData = [0,0,15,80,5,0,40,20,0,0,0,0]; // % fill per month
+  months.forEach((m, i) => {
+    const head = document.createElement('div');
+    head.className = 'cal-month';
+    head.textContent = m;
+    cal.appendChild(head);
+  });
+  months.forEach((m, i) => {
+    const bar = document.createElement('div');
+    bar.className = 'cal-bar';
+    if (leaveData[i] > 0) {
+      const fill = document.createElement('div');
+      fill.className = 'fill';
+      fill.style.cssText = `width:${leaveData[i]}%;background:${i===2||i===3?'#d4921a':'rgba(212,146,26,0.4)'}`;
+      bar.appendChild(fill);
+    }
+    cal.appendChild(bar);
+  });
+}
+
+/* ══════════════════════════════════════════════════════
+   CANVAS PAN & ZOOM
+══════════════════════════════════════════════════════ */
+const wrap = document.getElementById('canvas-wrap');
+const canvas = document.getElementById('canvas');
+
+let tx = 400, ty = 80; // translate
+let scale = 1;
+const MIN_SCALE = 0.1, MAX_SCALE = 3;
+
+function applyTransform() {
+  canvas.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+  document.getElementById('zoom-display').textContent = Math.round(scale * 100) + '%';
+  updateDotSize();
+  drawMinimap();
+}
+
+function updateDotSize() {
+  // Scale dot grid with zoom for stable visual density
+  const gap = Math.max(8, 24 * scale);
+  document.documentElement.style.setProperty('--dot-gap', gap + 'px');
+  const dotSz = Math.max(0.8, 1.5 * Math.sqrt(scale));
+  document.documentElement.style.setProperty('--dot-size', dotSz + 'px');
+}
+
+// Pan state
+let panning = false, panStart = {x:0,y:0}, panOrigin = {x:0,y:0};
+let panMode = false; // space key
+
+wrap.addEventListener('mousedown', e => {
+  if (e.target.closest('.node-header') || e.target.closest('.fraction-btn') ||
+      e.target.closest('#ctx-menu')) return;
+  if (panMode || e.button === 1) {
+    startPan(e);
+    return;
+  }
+  if (!e.target.closest('.node')) {
+    startPan(e);
+  }
+});
+
+function startPan(e) {
+  panning = true;
+  panStart = { x: e.clientX, y: e.clientY };
+  panOrigin = { x: tx, y: ty };
+  wrap.classList.add('grabbing');
+  e.preventDefault();
+}
+
+window.addEventListener('mousemove', e => {
+  if (!panning) return;
+  tx = panOrigin.x + (e.clientX - panStart.x);
+  ty = panOrigin.y + (e.clientY - panStart.y);
+  applyTransform();
+});
+
+window.addEventListener('mouseup', () => {
+  panning = false;
+  wrap.classList.remove('grabbing');
+});
+
+// Zoom
+wrap.addEventListener('wheel', e => {
+  e.preventDefault();
+  const rect = wrap.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  const delta = -e.deltaY * (e.deltaMode === 1 ? 20 : 1);
+  const factor = Math.pow(1.001, delta);
+  const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale * factor));
+  const sf = newScale / scale;
+
+  tx = mx - sf * (mx - tx);
+  ty = my - sf * (my - ty);
+  scale = newScale;
+  applyTransform();
+}, { passive: false });
+
+// Keyboard pan / zoom
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space' && !e.target.closest('input,textarea,button')) {
+    panMode = true;
+    wrap.style.cursor = 'grab';
+    e.preventDefault();
+  }
+  if ((e.metaKey || e.ctrlKey) && e.key === '=') { zoomBy(1.2, null); e.preventDefault(); }
+  if ((e.metaKey || e.ctrlKey) && e.key === '-') { zoomBy(0.8, null); e.preventDefault(); }
+  if ((e.metaKey || e.ctrlKey) && e.key === '0') { fitView(); e.preventDefault(); }
+  if (e.key === 'h' || e.key === 'H') { activateTool('hand'); }
+  if (e.key === 'v' || e.key === 'V') { activateTool('select'); }
+});
+window.addEventListener('keyup', e => {
+  if (e.code === 'Space') {
+    panMode = false;
+    wrap.style.cursor = '';
+  }
+});
+
+function zoomBy(factor, point) {
+  const rect = wrap.getBoundingClientRect();
+  const mx = point ? point.x : rect.width / 2;
+  const my = point ? point.y : rect.height / 2;
+  const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale * factor));
+  const sf = newScale / scale;
+  tx = mx - sf * (mx - tx);
+  ty = my - sf * (my - ty);
+  scale = newScale;
+  applyTransform();
+}
+
+function fitView() {
+  const nodes = document.querySelectorAll('.node');
+  if (!nodes.length) return;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  nodes.forEach(n => {
+    const x = parseInt(n.style.left); const y = parseInt(n.style.top);
+    const w = n.offsetWidth; const h = n.offsetHeight;
+    minX = Math.min(minX, x); minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x + w); maxY = Math.max(maxY, y + h);
+  });
+  const rect = wrap.getBoundingClientRect();
+  const pad = 80;
+  const scaleX = (rect.width - pad*2) / (maxX - minX);
+  const scaleY = (rect.height - pad*2) / (maxY - minY);
+  scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.min(scaleX, scaleY)));
+  tx = pad - minX * scale;
+  ty = pad - minY * scale;
+  applyTransform();
+}
+
+/* ══════════════════════════════════════════════════════
+   NODE DRAGGING
+══════════════════════════════════════════════════════ */
+let draggingNode = null, dragOffset = {x:0,y:0};
+let selectedNode = null;
+
+document.querySelectorAll('.node-header').forEach(hdr => {
+  hdr.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    const node = document.getElementById(hdr.dataset.nodeId);
+    if (!node) return;
+    selectNode(node);
+    draggingNode = node;
+    const rect = node.getBoundingClientRect();
+    // Account for canvas transform
+    dragOffset = {
+      x: (e.clientX - rect.left) / scale,
+      y: (e.clientY - rect.top) / scale,
+    };
+    wrap.classList.add('node-dragging');
+    e.stopPropagation();
+    e.preventDefault();
+  });
+});
+
+window.addEventListener('mousemove', e => {
+  if (!draggingNode) return;
+  const wrapRect = wrap.getBoundingClientRect();
+  const x = (e.clientX - wrapRect.left - tx) / scale - dragOffset.x;
+  const y = (e.clientY - wrapRect.top  - ty) / scale - dragOffset.y;
+  draggingNode.style.left = Math.max(0, x) + 'px';
+  draggingNode.style.top  = Math.max(0, y) + 'px';
+  drawConnections();
+  drawMinimap();
+});
+
+window.addEventListener('mouseup', () => {
+  draggingNode = null;
+  wrap.classList.remove('node-dragging');
+});
+
+function selectNode(node) {
+  if (selectedNode) selectedNode.classList.remove('selected');
+  selectedNode = node;
+  node.classList.add('selected');
+}
+
+// Deselect on canvas click
+wrap.addEventListener('click', e => {
+  if (!e.target.closest('.node')) {
+    if (selectedNode) { selectedNode.classList.remove('selected'); selectedNode = null; }
+  }
+});
+
+/* ══════════════════════════════════════════════════════
+   CONNECTION LINES
+══════════════════════════════════════════════════════ */
+const CONNECTIONS = [
+  { from: 'node-week', to: 'node-projects' },
+  { from: 'node-week', to: 'node-resources' },
+  { from: 'node-projects', to: 'node-resources' },
+  { from: 'node-resources', to: 'node-leave' },
+];
+
+function getNodeCenter(node) {
+  return {
+    x: parseInt(node.style.left) + node.offsetWidth / 2,
+    y: parseInt(node.style.top) + node.offsetHeight / 2,
+  };
+}
+
+function getNodePort(node, dir) {
+  const l = parseInt(node.style.left), t = parseInt(node.style.top);
+  const w = node.offsetWidth, h = node.offsetHeight;
+  switch(dir) {
+    case 'right':  return { x: l + w, y: t + h/2 };
+    case 'left':   return { x: l,     y: t + h/2 };
+    case 'bottom': return { x: l + w/2, y: t + h };
+    case 'top':    return { x: l + w/2, y: t };
+  }
+}
+
+function drawConnections() {
+  const svg = document.getElementById('connections-svg');
+  svg.innerHTML = '';
+  CONNECTIONS.forEach(conn => {
+    const fromNode = document.getElementById(conn.from);
+    const toNode   = document.getElementById(conn.to);
+    if (!fromNode || !toNode) return;
+    const a = getNodePort(fromNode, 'right');
+    const b = getNodePort(toNode, 'left');
+    // If b is to the left of a, use bottom-top
+    const ax = a.x, ay = a.y, bx = b.x, by = b.y;
+    const cx1 = ax + Math.abs(bx-ax)*0.5, cy1 = ay;
+    const cx2 = bx - Math.abs(bx-ax)*0.5, cy2 = by;
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', `M${ax},${ay} C${cx1},${cy1} ${cx2},${cy2} ${bx},${by}`);
+    path.setAttribute('class','conn-line');
+    svg.appendChild(path);
+  });
+}
+
+/* ══════════════════════════════════════════════════════
+   MINIMAP
+══════════════════════════════════════════════════════ */
+function drawMinimap() {
+  const mm = document.getElementById('mm');
+  const ctx = mm.getContext('2d');
+  const W = mm.width, H = mm.height;
+  ctx.clearRect(0,0,W,H);
+
+  // Background
+  ctx.fillStyle = '#111113';
+  ctx.fillRect(0,0,W,H);
+
+  // World bounds
+  const worldW = 8000, worldH = 6000;
+  const scaleX = W / worldW, scaleY = H / worldH;
+
+  // Draw nodes
+  document.querySelectorAll('.node').forEach(n => {
+    const x = parseInt(n.style.left) * scaleX;
+    const y = parseInt(n.style.top)  * scaleY;
+    const w = n.offsetWidth  * scaleX;
+    const h = n.offsetHeight * scaleY;
+    ctx.fillStyle = '#2e2e38';
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 2);
+    ctx.fill();
+  });
+
+  // Viewport indicator
+  const wrapRect = wrap.getBoundingClientRect();
+  const vx = (-tx / scale) * scaleX;
+  const vy = (-ty / scale) * scaleY;
+  const vw = (wrapRect.width  / scale) * scaleX;
+  const vh = (wrapRect.height / scale) * scaleY;
+  ctx.strokeStyle = 'rgba(58,123,213,0.8)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(vx, vy, vw, vh);
+}
+
+/* ══════════════════════════════════════════════════════
+   CONTEXT MENU
+══════════════════════════════════════════════════════ */
+let ctxPos = {x:0,y:0};
+const ctxMenu = document.getElementById('ctx-menu');
+
+wrap.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  ctxPos = { x: (e.clientX - tx) / scale, y: (e.clientY - ty) / scale };
+  ctxMenu.style.left = e.clientX + 'px';
+  ctxMenu.style.top  = e.clientY + 'px';
+  ctxMenu.style.display = 'block';
+});
+window.addEventListener('click', () => { ctxMenu.style.display = 'none'; });
+
+document.getElementById('ctx-fit').addEventListener('click', fitView);
+document.getElementById('ctx-zoom-in').addEventListener('click', () => zoomBy(1.25, null));
+document.getElementById('ctx-zoom-out').addEventListener('click', () => zoomBy(0.8, null));
+
+let nodeCounter = 10;
+function addNewNode(type) {
+  const id = 'node-dyn-' + (++nodeCounter);
+  const node = document.createElement('div');
+  node.id = id;
+  node.className = 'node';
+  node.style.left = ctxPos.x + 'px';
+  node.style.top  = ctxPos.y + 'px';
+  node.style.width = '320px';
+
+  let icon='📋', title='Ny nod', subtitle='Klicka för att redigera';
+  if (type==='week')  { icon='📅'; title='Veckovy'; subtitle='Ny period'; node.classList.add('week-node'); }
+  if (type==='res')   { icon='👥'; title='Resurser'; subtitle='Tom lista'; node.classList.add('resource-node'); }
+
+  node.innerHTML = `
+    <div class="node-header" data-node-id="${id}">
+      <div class="node-icon">${icon}</div>
+      <div><div class="node-title">${title}</div><div class="node-subtitle">${subtitle}</div></div>
+    </div>
+    <div class="node-body" style="color:var(--text3);font-size:12px;text-align:center;padding:24px 14px">
+      Tom nod · dra för att flytta
+    </div>`;
+
+  canvas.appendChild(node);
+  node.querySelector('.node-header').addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    selectNode(node);
+    draggingNode = node;
+    const rect = node.getBoundingClientRect();
+    dragOffset = { x: (e.clientX - rect.left)/scale, y: (e.clientY - rect.top)/scale };
+    wrap.classList.add('node-dragging');
+    e.stopPropagation(); e.preventDefault();
+  });
+  selectNode(node);
+  drawMinimap();
+}
+
+document.getElementById('ctx-new-week').addEventListener('click', () => addNewNode('week'));
+document.getElementById('ctx-new-proj').addEventListener('click', () => addNewNode('proj'));
+document.getElementById('ctx-new-res').addEventListener('click',  () => addNewNode('res'));
+document.getElementById('btn-new-node').addEventListener('click', () => {
+  ctxPos = { x: (-tx/scale) + 400, y: (-ty/scale) + 200 };
+  addNewNode('proj');
+});
+
+/* ══════════════════════════════════════════════════════
+   TOOLBAR ACTIONS
+══════════════════════════════════════════════════════ */
+function activateTool(tool) {
+  document.getElementById('btn-select').classList.toggle('active', tool==='select');
+  document.getElementById('btn-hand').classList.toggle('active', tool==='hand');
+  panMode = (tool === 'hand');
+}
+
+document.getElementById('btn-select').addEventListener('click', () => activateTool('select'));
+document.getElementById('btn-hand').addEventListener('click',   () => activateTool('hand'));
+document.getElementById('btn-fit').addEventListener('click', fitView);
+
+/* ══════════════════════════════════════════════════════
+   PINCH-TO-ZOOM (trackpad)
+══════════════════════════════════════════════════════ */
+// Already handled by wheel event + ctrlKey (browser native pinch)
+wrap.addEventListener('wheel', e => {
+  if (e.ctrlKey) {
+    // Pinch handled by zoom above
+    e.preventDefault();
+  }
+}, { passive: false });
+
+/* ══════════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════════ */
+buildWeekGrid();
+buildLeaveCalendar();
+applyTransform();
+drawConnections();
+setTimeout(() => {
+  drawConnections();
+  drawMinimap();
+  fitView();
+}, 100);
+</script>
+</body>
+</html>

@@ -434,19 +434,23 @@
   <span class="logo">JUNG</span>
   <div class="divider"></div>
   <div class="tool-group">
-    <button class="tool-btn active" id="btn-select" title="Välj (V)">
-      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 1l8 5-4.5 1L4 11 2 1z" fill="currentColor"/></svg>
-      Välj
+    <button class="tool-btn active" id="btn-select" title="Markera  V">
+      <svg width="11" height="13" viewBox="0 0 11 13" fill="none"><path d="M1 1l9 5.5-5 1.2L3.5 12 1 1z" fill="currentColor"/></svg>
     </button>
-    <button class="tool-btn" id="btn-hand" title="Panorera (H)">
-      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="4" width="2" height="7" rx="1" fill="currentColor"/><rect x="4" y="2" width="2" height="9" rx="1" fill="currentColor"/><rect x="7" y="3" width="2" height="8" rx="1" fill="currentColor"/><rect x="10" y="4" width="1.5" height="7" rx="0.75" fill="currentColor"/></svg>
-      Panorera
+    <button class="tool-btn" id="btn-hand" title="Panorera  H  /  Håll Space">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 1.5C5 .67 5.67 0 6.5 0S8 .67 8 1.5V6h.5C9.33 6 10 6.67 10 7.5v.09c.31-.37.78-.59 1.3-.59.9 0 1.7.7 1.7 1.6v.4c.31-.26.7-.5 1-.5.9 0 1 .9 1 1.5v1.4C14 12.9 12.3 14 10 14H6c-1.7 0-3-1.1-3.8-2.8L.4 7.5C.1 6.8.4 6 1.1 5.7c.7-.3 1.5 0 1.9.6L4 7.5V1.5C4 .67 4.67 0 5.5 0S5 .67 5 1.5z" fill="currentColor" fill-rule="evenodd"/></svg>
+    </button>
+    <button class="tool-btn" id="btn-zoom" title="Zooma  Z  /  Alt+klick zoomar ut">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="4" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M9 9l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M3.5 5.5h4M5.5 3.5v4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
     </button>
   </div>
   <div class="divider"></div>
-  <button class="tool-btn" id="btn-fit">Anpassa vy</button>
+  <button class="tool-btn" id="btn-fit" title="Zoom to fit  ⇧1">Anpassa vy</button>
   <button class="tool-btn" id="btn-new-node">+ Nod</button>
-  <span id="zoom-display">100%</span>
+  <div class="divider"></div>
+  <button class="tool-btn" id="btn-zoom-out" title="Zooma ut  ⌘−" style="padding:5px 8px">−</button>
+  <span id="zoom-display" style="cursor:pointer;min-width:44px;text-align:center;color:var(--text2);font-size:12px" title="Återställ till 100%  ⌘0">100%</span>
+  <button class="tool-btn" id="btn-zoom-in"  title="Zooma in  ⌘+" style="padding:5px 8px">+</button>
 </div>
 
 <!-- Canvas -->
@@ -758,42 +762,99 @@ function buildLeaveCalendar() {
 }
 
 /* ══════════════════════════════════════════════════════
-   CANVAS PAN & ZOOM
+   CANVAS PAN & ZOOM  —  Figma-identical controls
+   ─────────────────────────────────────────────────────
+   Trackpad two-finger scroll  → pan (x + y)
+   Trackpad pinch              → zoom (arrives as wheel + ctrlKey)
+   Cmd/Ctrl + scroll wheel     → zoom
+   Middle-mouse drag           → pan
+   Space + drag                → pan (temporary hand)
+   H                           → hand tool (permanent)
+   V                           → select tool
+   Cmd/Ctrl +  / =             → zoom in  (Figma step)
+   Cmd/Ctrl −                  → zoom out (Figma step)
+   Cmd/Ctrl 0                  → reset to 100%
+   Cmd/Ctrl Shift H  or  ⇧1   → zoom to fit all
+   ⇧2                          → zoom to selection
+   + / −  (no modifier)        → zoom in / out (step)
+   Z + click                   → zoom in on point
+   Z + Alt + click             → zoom out on point
 ══════════════════════════════════════════════════════ */
 const wrap = document.getElementById('canvas-wrap');
 const canvas = document.getElementById('canvas');
 
-let tx = 400, ty = 80; // translate
+let tx = 400, ty = 80;
 let scale = 1;
-const MIN_SCALE = 0.1, MAX_SCALE = 3;
+const MIN_SCALE = 0.02, MAX_SCALE = 4;
+
+// Figma's exact zoom step levels
+const ZOOM_LEVELS = [0.02,0.05,0.1,0.15,0.25,0.33,0.5,0.67,0.75,1,1.25,1.5,2,3,4];
+
+function snapToLevel(s) { return s; } // free zoom, levels only for +/- keys
+
+function nextZoomLevel(current, dir) {
+  if (dir > 0) {
+    return ZOOM_LEVELS.find(l => l > current + 0.001) || ZOOM_LEVELS[ZOOM_LEVELS.length-1];
+  } else {
+    return [...ZOOM_LEVELS].reverse().find(l => l < current - 0.001) || ZOOM_LEVELS[0];
+  }
+}
 
 function applyTransform() {
   canvas.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
-  document.getElementById('zoom-display').textContent = Math.round(scale * 100) + '%';
+  const pct = Math.round(scale * 100);
+  document.getElementById('zoom-display').textContent = pct + '%';
   updateDotSize();
   drawMinimap();
 }
 
 function updateDotSize() {
-  // Scale dot grid with zoom for stable visual density
-  const gap = Math.max(8, 24 * scale);
+  const gap = Math.max(6, 24 * scale);
   document.documentElement.style.setProperty('--dot-gap', gap + 'px');
-  const dotSz = Math.max(0.8, 1.5 * Math.sqrt(scale));
+  const dotSz = Math.max(0.5, 1.5 * Math.sqrt(scale));
   document.documentElement.style.setProperty('--dot-size', dotSz + 'px');
 }
 
-// Pan state
+// ── Pan state ─────────────────────────────────────────
 let panning = false, panStart = {x:0,y:0}, panOrigin = {x:0,y:0};
-let panMode = false; // space key
+let spaceDown = false;  // Space held → temporary hand
+let currentTool = 'select'; // 'select' | 'hand' | 'zoom'
+
+function isHandActive() { return currentTool === 'hand' || spaceDown; }
+function isZoomActive() { return currentTool === 'zoom'; }
+
+function updateCursor() {
+  if (isHandActive()) {
+    wrap.style.cursor = panning ? 'grabbing' : 'grab';
+  } else if (isZoomActive()) {
+    wrap.style.cursor = 'zoom-in';
+  } else {
+    wrap.style.cursor = '';
+  }
+}
 
 wrap.addEventListener('mousedown', e => {
-  if (e.target.closest('.node-header') || e.target.closest('.fraction-btn') ||
-      e.target.closest('#ctx-menu')) return;
-  if (panMode || e.button === 1) {
-    startPan(e);
-    return;
+  if (e.target.closest('#ctx-menu')) return;
+
+  // Middle mouse → always pan
+  if (e.button === 1) { startPan(e); e.preventDefault(); return; }
+  if (e.button !== 0) return;
+
+  // Zoom tool click
+  if (isZoomActive() && !e.target.closest('.node')) {
+    const rect = wrap.getBoundingClientRect();
+    const pt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    zoomToPoint(e.altKey ? nextZoomLevel(scale, -1) : nextZoomLevel(scale, 1), pt);
+    e.preventDefault(); return;
   }
-  if (!e.target.closest('.node')) {
+
+  // Hand mode or space → pan (unless clicking a node interactable)
+  if (isHandActive()) {
+    if (!e.target.closest('.fraction-btn')) { startPan(e); return; }
+  }
+
+  // Select tool on empty canvas → pan
+  if (!e.target.closest('.node') && !e.target.closest('.fraction-btn')) {
     startPan(e);
   }
 });
@@ -803,6 +864,7 @@ function startPan(e) {
   panStart = { x: e.clientX, y: e.clientY };
   panOrigin = { x: tx, y: ty };
   wrap.classList.add('grabbing');
+  wrap.style.cursor = 'grabbing';
   e.preventDefault();
 }
 
@@ -813,54 +875,108 @@ window.addEventListener('mousemove', e => {
   applyTransform();
 });
 
-window.addEventListener('mouseup', () => {
+window.addEventListener('mouseup', e => {
+  if (!panning) return;
   panning = false;
   wrap.classList.remove('grabbing');
+  updateCursor();
 });
 
-// Zoom
+// ── Wheel / trackpad ──────────────────────────────────
+// Figma rules:
+//   ctrlKey  = pinch gesture OR Ctrl+scroll → ZOOM
+//   metaKey  = Cmd+scroll                   → ZOOM
+//   plain    = two-finger pan               → PAN
 wrap.addEventListener('wheel', e => {
   e.preventDefault();
   const rect = wrap.getBoundingClientRect();
   const mx = e.clientX - rect.left;
   const my = e.clientY - rect.top;
 
-  const delta = -e.deltaY * (e.deltaMode === 1 ? 20 : 1);
-  const factor = Math.pow(1.001, delta);
-  const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale * factor));
-  const sf = newScale / scale;
+  if (e.ctrlKey || e.metaKey) {
+    // ── ZOOM ──────────────────────────────────────────
+    // Normalize delta: trackpad pinch comes in small values, scroll wheel larger
+    let delta = e.deltaY;
+    if (e.deltaMode === 1) delta *= 15; // line mode
+    if (e.deltaMode === 2) delta *= 300; // page mode
 
-  tx = mx - sf * (mx - tx);
-  ty = my - sf * (my - ty);
-  scale = newScale;
+    // Figma uses a gentler curve for trackpad
+    const factor = Math.pow(0.998, delta);
+    const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale * factor));
+    const sf = newScale / scale;
+    tx = mx - sf * (mx - tx);
+    ty = my - sf * (my - ty);
+    scale = newScale;
+  } else {
+    // ── PAN ───────────────────────────────────────────
+    let dx = e.deltaX, dy = e.deltaY;
+    if (e.deltaMode === 1) { dx *= 20; dy *= 20; }
+    if (e.deltaMode === 2) { dx *= 400; dy *= 400; }
+    tx -= dx;
+    ty -= dy;
+  }
   applyTransform();
 }, { passive: false });
 
-// Keyboard pan / zoom
+// ── Keyboard shortcuts ────────────────────────────────
 window.addEventListener('keydown', e => {
-  if (e.code === 'Space' && !e.target.closest('input,textarea,button')) {
-    panMode = true;
-    wrap.style.cursor = 'grab';
-    e.preventDefault();
+  const tag = document.activeElement?.tagName;
+  const inInput = tag === 'INPUT' || tag === 'TEXTAREA';
+
+  // Space → temp hand (not in inputs)
+  if (e.code === 'Space' && !inInput) {
+    if (!spaceDown) { spaceDown = true; updateCursor(); }
+    e.preventDefault(); return;
   }
-  if ((e.metaKey || e.ctrlKey) && e.key === '=') { zoomBy(1.2, null); e.preventDefault(); }
-  if ((e.metaKey || e.ctrlKey) && e.key === '-') { zoomBy(0.8, null); e.preventDefault(); }
-  if ((e.metaKey || e.ctrlKey) && e.key === '0') { fitView(); e.preventDefault(); }
-  if (e.key === 'h' || e.key === 'H') { activateTool('hand'); }
-  if (e.key === 'v' || e.key === 'V') { activateTool('select'); }
-});
-window.addEventListener('keyup', e => {
-  if (e.code === 'Space') {
-    panMode = false;
-    wrap.style.cursor = '';
+
+  if (inInput) return;
+
+  const cmd = e.metaKey || e.ctrlKey;
+
+  // Tool switching
+  if (!cmd && (e.key === 'v' || e.key === 'V')) { activateTool('select'); return; }
+  if (!cmd && (e.key === 'h' || e.key === 'H')) { activateTool('hand');   return; }
+  if (!cmd && (e.key === 'z' || e.key === 'Z')) { activateTool('zoom');   return; }
+
+  // Zoom in/out — Cmd+= / Cmd+- (Figma snaps to levels)
+  if (cmd && (e.key === '=' || e.key === '+')) {
+    zoomToPoint(nextZoomLevel(scale, 1), null); e.preventDefault(); return;
   }
+  if (cmd && e.key === '-') {
+    zoomToPoint(nextZoomLevel(scale, -1), null); e.preventDefault(); return;
+  }
+
+  // Cmd+0 → 100%
+  if (cmd && e.key === '0') {
+    zoomToPoint(1, null); e.preventDefault(); return;
+  }
+
+  // Cmd+Shift+H or Shift+1 → fit all
+  if ((cmd && e.shiftKey && (e.key === 'h' || e.key === 'H')) ||
+      (e.shiftKey && e.key === '1')) {
+    fitAll(); e.preventDefault(); return;
+  }
+
+  // Shift+2 → zoom to selection
+  if (e.shiftKey && e.key === '2') {
+    fitSelection(); e.preventDefault(); return;
+  }
+
+  // + / - without cmd → step zoom (centered)
+  if (!cmd && e.key === '+') { zoomToPoint(nextZoomLevel(scale, 1),  null); return; }
+  if (!cmd && e.key === '-') { zoomToPoint(nextZoomLevel(scale, -1), null); return; }
 });
 
-function zoomBy(factor, point) {
+window.addEventListener('keyup', e => {
+  if (e.code === 'Space') { spaceDown = false; updateCursor(); }
+});
+
+// ── Zoom helpers ──────────────────────────────────────
+function zoomToPoint(newScale, point) {
+  newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, newScale));
   const rect = wrap.getBoundingClientRect();
-  const mx = point ? point.x : rect.width / 2;
+  const mx = point ? point.x : rect.width  / 2;
   const my = point ? point.y : rect.height / 2;
-  const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale * factor));
   const sf = newScale / scale;
   tx = mx - sf * (mx - tx);
   ty = my - sf * (my - ty);
@@ -868,23 +984,44 @@ function zoomBy(factor, point) {
   applyTransform();
 }
 
-function fitView() {
+function zoomBy(factor, point) {
+  zoomToPoint(scale * factor, point);
+}
+
+function fitAll() {
   const nodes = document.querySelectorAll('.node');
   if (!nodes.length) return;
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   nodes.forEach(n => {
-    const x = parseInt(n.style.left); const y = parseInt(n.style.top);
-    const w = n.offsetWidth; const h = n.offsetHeight;
-    minX = Math.min(minX, x); minY = Math.min(minY, y);
-    maxX = Math.max(maxX, x + w); maxY = Math.max(maxY, y + h);
+    const x = parseFloat(n.style.left), y = parseFloat(n.style.top);
+    const w = n.offsetWidth, h = n.offsetHeight;
+    if (x < minX) minX = x; if (y < minY) minY = y;
+    if (x+w > maxX) maxX = x+w; if (y+h > maxY) maxY = y+h;
   });
   const rect = wrap.getBoundingClientRect();
   const pad = 80;
-  const scaleX = (rect.width - pad*2) / (maxX - minX);
-  const scaleY = (rect.height - pad*2) / (maxY - minY);
-  scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.min(scaleX, scaleY)));
-  tx = pad - minX * scale;
-  ty = pad - minY * scale;
+  const s = Math.min(MAX_SCALE, Math.max(MIN_SCALE,
+    Math.min((rect.width-pad*2)/(maxX-minX), (rect.height-pad*2)/(maxY-minY))));
+  scale = s;
+  tx = rect.width/2  - ((minX+maxX)/2) * s;
+  ty = rect.height/2 - ((minY+maxY)/2) * s;
+  applyTransform();
+}
+
+function fitView() { fitAll(); } // alias used elsewhere
+
+function fitSelection() {
+  if (!selectedNode) { fitAll(); return; }
+  const n = selectedNode;
+  const x = parseFloat(n.style.left), y = parseFloat(n.style.top);
+  const w = n.offsetWidth, h = n.offsetHeight;
+  const rect = wrap.getBoundingClientRect();
+  const pad = 120;
+  const s = Math.min(MAX_SCALE, Math.max(MIN_SCALE,
+    Math.min((rect.width-pad*2)/w, (rect.height-pad*2)/h)));
+  scale = s;
+  tx = rect.width/2  - (x + w/2) * s;
+  ty = rect.height/2 - (y + h/2) * s;
   applyTransform();
 }
 
@@ -1098,25 +1235,21 @@ document.getElementById('btn-new-node').addEventListener('click', () => {
    TOOLBAR ACTIONS
 ══════════════════════════════════════════════════════ */
 function activateTool(tool) {
+  currentTool = tool;
   document.getElementById('btn-select').classList.toggle('active', tool==='select');
-  document.getElementById('btn-hand').classList.toggle('active', tool==='hand');
-  panMode = (tool === 'hand');
+  document.getElementById('btn-hand').classList.toggle('active',   tool==='hand');
+  document.getElementById('btn-zoom').classList.toggle('active',   tool==='zoom');
+  updateCursor();
 }
 
 document.getElementById('btn-select').addEventListener('click', () => activateTool('select'));
 document.getElementById('btn-hand').addEventListener('click',   () => activateTool('hand'));
-document.getElementById('btn-fit').addEventListener('click', fitView);
+document.getElementById('btn-zoom').addEventListener('click',   () => activateTool('zoom'));
+document.getElementById('btn-fit').addEventListener('click', fitAll);
+document.getElementById('btn-zoom-in').addEventListener('click',  () => zoomToPoint(nextZoomLevel(scale, 1),  null));
+document.getElementById('btn-zoom-out').addEventListener('click', () => zoomToPoint(nextZoomLevel(scale, -1), null));
+document.getElementById('zoom-display').addEventListener('click', () => zoomToPoint(1, null));
 
-/* ══════════════════════════════════════════════════════
-   PINCH-TO-ZOOM (trackpad)
-══════════════════════════════════════════════════════ */
-// Already handled by wheel event + ctrlKey (browser native pinch)
-wrap.addEventListener('wheel', e => {
-  if (e.ctrlKey) {
-    // Pinch handled by zoom above
-    e.preventDefault();
-  }
-}, { passive: false });
 
 /* ══════════════════════════════════════════════════════
    INIT

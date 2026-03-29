@@ -1,1268 +1,1336 @@
 <!DOCTYPE html>
 <html lang="sv">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Jung — Resursplanering</title>
-  <script>
-    (function() {
-      const HASH = '2afdd0b5e7bd64e5b8bb96b5e5dfc6daf428e0aa2f3f0d8e4d3b3c3e5e6a7b8c'; // placeholder, computed below
-      function h(s) {
-        // simple djb2 for quick client-side check
-        let hash = 5381;
-        for (let i = 0; i < s.length; i++) hash = ((hash << 5) + hash) ^ s.charCodeAt(i);
-        return (hash >>> 0).toString(16);
-      }
-      const CORRECT = h('2580'); // = '7c8fe5b1'
-      const key = 'jung_auth';
-      if (sessionStorage.getItem(key) !== CORRECT) {
-        document.addEventListener('DOMContentLoaded', function() {
-          const overlay = document.getElementById('auth-overlay');
-          overlay.style.display = 'flex';
-          document.getElementById('auth-input').focus();
-          document.getElementById('auth-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const val = document.getElementById('auth-input').value;
-            if (h(val) === CORRECT) {
-              sessionStorage.setItem(key, CORRECT);
-              overlay.style.display = 'none';
-            } else {
-              document.getElementById('auth-error').style.display = 'block';
-              document.getElementById('auth-input').value = '';
-              document.getElementById('auth-input').focus();
-            }
-          });
-        });
-      }
-    })();
-  </script>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Jung OS</title>
+<script>
+(function(){
+  function h(s){let x=5381;for(let i=0;i<s.length;i++)x=((x<<5)+x)^s.charCodeAt(i);return(x>>>0).toString(16);}
+  const CORRECT=h('2580'),KEY='jung_auth';
+  if(sessionStorage.getItem(KEY)!==CORRECT){
+    document.addEventListener('DOMContentLoaded',function(){
+      const o=document.getElementById('auth-overlay');
+      o.style.display='flex';
+      document.getElementById('auth-input').focus();
+      document.getElementById('auth-form').addEventListener('submit',function(e){
+        e.preventDefault();
+        const v=document.getElementById('auth-input').value;
+        if(h(v)===CORRECT){sessionStorage.setItem(KEY,CORRECT);o.style.display='none';}
+        else{document.getElementById('auth-error').style.display='block';document.getElementById('auth-input').value='';}
+      });
+    });
+  }
+})();
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#111113;--surface:#1a1a1f;--surface2:#222228;--surface3:#28282f;
+  --border:#2e2e38;--border2:#3a3a48;
+  --text:#e8e8f0;--text2:#9090a8;--text3:#5a5a72;
+  --accent:#e8304a;--green:#2d9e6e;--amber:#d4921a;--blue:#3a7bd5;--purple:#8b5cf6;
+  --dot:#252530;--dot-size:1.5px;--dot-gap:24px;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
+  font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
+  font-size:13px;color:var(--text);user-select:none;}
 
-    :root {
-      --bg: #111113;
-      --surface: #1a1a1f;
-      --surface2: #222228;
-      --border: #2e2e38;
-      --border2: #3a3a48;
-      --text: #e8e8f0;
-      --text2: #9090a8;
-      --text3: #5a5a72;
-      --accent: #e8304a;
-      --accent2: #c02040;
-      --green: #2d9e6e;
-      --green2: #1a7a50;
-      --amber: #d4921a;
-      --blue: #3a7bd5;
-      --dot: #2a2a35;
-      --dot-size: 1.5px;
-      --dot-gap: 24px;
-    }
+/* ── Toolbar ── */
+#toolbar{position:fixed;top:0;left:0;right:0;height:48px;background:rgba(17,17,19,0.92);
+  backdrop-filter:blur(12px);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 14px;gap:8px;z-index:1000;}
+.logo{font-size:15px;font-weight:800;letter-spacing:.1em;color:var(--text);}
+.tb-sep{width:1px;height:20px;background:var(--border);margin:0 4px;}
+.tb-group{display:flex;gap:2px;}
+.tb-btn{background:transparent;border:1px solid transparent;border-radius:6px;
+  color:var(--text2);cursor:pointer;padding:5px 9px;font-size:12px;
+  transition:all .12s;display:flex;align-items:center;gap:4px;white-space:nowrap;}
+.tb-btn:hover{background:var(--surface2);color:var(--text);border-color:var(--border);}
+.tb-btn.active{background:var(--surface2);color:var(--text);border-color:var(--border2);}
+#zoom-display{font-size:12px;color:var(--text3);min-width:40px;text-align:center;cursor:pointer;padding:5px 4px;}
+#zoom-display:hover{color:var(--text);}
 
-    html, body {
-      width: 100%; height: 100%;
-      overflow: hidden;
-      background: var(--bg);
-      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
-      font-size: 13px;
-      color: var(--text);
-      user-select: none;
-    }
+/* ── Canvas ── */
+#canvas-wrap{position:fixed;top:48px;left:0;right:0;bottom:0;overflow:hidden;cursor:default;}
+#canvas-wrap.is-grabbing{cursor:grabbing!important;}
+#canvas{position:absolute;top:0;left:0;width:8000px;height:6000px;transform-origin:0 0;}
+#canvas::before{content:'';position:absolute;inset:0;
+  background-image:radial-gradient(circle,var(--dot) var(--dot-size),transparent var(--dot-size));
+  background-size:var(--dot-gap) var(--dot-gap);pointer-events:none;}
+#connections-svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;}
+.conn-path{fill:none;stroke:var(--border2);stroke-width:1.5;stroke-dasharray:4 4;opacity:.5;}
 
-    /* ── Toolbar ─────────────────────────────────── */
-    #toolbar {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      height: 48px;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      padding: 0 16px;
-      gap: 16px;
-      z-index: 1000;
-    }
+/* ── Node base ── */
+.node{position:absolute;background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.4);
+  transition:box-shadow .15s,opacity .15s;}
+.node:hover{box-shadow:0 8px 32px rgba(0,0,0,.6),0 0 0 1px var(--border2);}
+.node.selected{box-shadow:0 8px 32px rgba(0,0,0,.6),0 0 0 2px var(--blue);}
+.node.is-collapsed .node-body{display:none!important;}
+.node.is-collapsed{box-shadow:0 2px 12px rgba(0,0,0,.3);}
+.node.is-fullscreen .node-body{height:calc(100% - 46px)!important;overflow:auto!important;}
 
-    #toolbar .logo {
-      font-size: 16px;
-      font-weight: 800;
-      letter-spacing: 0.08em;
-      color: var(--text);
-    }
+/* Node header */
+.node-header{display:flex;align-items:center;gap:8px;padding:10px 12px;
+  border-bottom:1px solid var(--border);cursor:grab;min-height:46px;}
+.node-header:active{cursor:grabbing;}
+.node.is-collapsed .node-header{border-bottom:none;border-radius:11px;}
+.node-icon{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;
+  justify-content:center;font-size:11px;flex-shrink:0;}
+.node-title{font-weight:600;font-size:13px;line-height:1.2;}
+.node-subtitle{font-size:10px;color:var(--text3);margin-top:1px;}
+.node-meta{flex:1;min-width:0;}
 
-    #toolbar .divider {
-      width: 1px;
-      height: 20px;
-      background: var(--border);
-    }
+/* Node action buttons */
+.node-actions{display:flex;gap:2px;margin-left:auto;flex-shrink:0;opacity:0;transition:opacity .15s;}
+.node-header:hover .node-actions,.node.selected .node-actions{opacity:1;}
+.na-btn{width:22px;height:22px;background:transparent;border:1px solid transparent;
+  border-radius:4px;color:var(--text3);cursor:pointer;display:flex;align-items:center;
+  justify-content:center;font-size:10px;transition:all .1s;}
+.na-btn:hover{background:var(--surface2);border-color:var(--border);color:var(--text);}
+.na-btn.active{color:var(--blue);}
 
-    #toolbar .tool-group {
-      display: flex;
-      gap: 4px;
-    }
+/* Badges */
+.badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:500;white-space:nowrap;}
+.badge-red{background:rgba(232,48,74,.15);color:#e8304a;}
+.badge-green{background:rgba(45,158,110,.15);color:#2d9e6e;}
+.badge-amber{background:rgba(212,146,26,.15);color:#d4921a;}
+.badge-blue{background:rgba(58,123,213,.15);color:#6aa0f0;}
+.badge-gray{background:var(--surface2);color:var(--text2);}
 
-    .tool-btn {
-      background: transparent;
-      border: 1px solid transparent;
-      border-radius: 6px;
-      color: var(--text2);
-      cursor: pointer;
-      padding: 5px 10px;
-      font-size: 12px;
-      transition: all 0.12s;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .tool-btn:hover { background: var(--surface2); color: var(--text); border-color: var(--border); }
-    .tool-btn.active { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+/* Node body */
+.node-body{padding:12px 14px;overflow:hidden;}
 
-    #zoom-display {
-      margin-left: auto;
-      font-size: 12px;
-      color: var(--text3);
-      min-width: 48px;
-      text-align: right;
-    }
+/* ── Fullscreen backdrop ── */
+#fs-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(3px);
+  z-index:799;display:none;}
 
-    /* ── Canvas ──────────────────────────────────── */
-    #canvas-wrap {
-      position: fixed;
-      top: 48px; left: 0; right: 0; bottom: 0;
-      overflow: hidden;
-      cursor: grab;
-    }
-    #canvas-wrap.grabbing { cursor: grabbing; }
-    #canvas-wrap.node-dragging { cursor: default; }
+/* ══ TIMELINE NODE ══ */
+.timeline-node{width:1180px;}
+.tl-body{display:flex;padding:0;height:460px;overflow:hidden;}
+.node.is-fullscreen .tl-body{height:calc(100% - 46px);}
+.tl-sidebar{width:192px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;overflow-x:hidden;}
+.tl-sidebar::-webkit-scrollbar{width:3px;}
+.tl-sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+.tl-scroll{flex:1;overflow-x:auto;overflow-y:auto;position:relative;}
+.tl-scroll::-webkit-scrollbar{height:5px;width:5px;}
+.tl-scroll::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+.tl-inner{position:relative;min-height:100%;}
 
-    #canvas {
-      position: absolute;
-      top: 0; left: 0;
-      width: 8000px;
-      height: 6000px;
-      transform-origin: 0 0;
-    }
+/* sidebar rows */
+.tl-group-hdr{padding:8px 12px 4px;font-size:10px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--text3);display:flex;align-items:center;gap:6px;
+  position:sticky;top:0;background:var(--surface);z-index:2;}
+.tl-group-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.tl-sb-row{height:32px;padding:0 12px;display:flex;align-items:center;font-size:11px;
+  color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  border-bottom:1px solid rgba(46,46,56,.5);}
+.tl-sb-row:hover{background:var(--surface2);color:var(--text);}
 
-    /* Dotted background */
-    #canvas::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background-image: radial-gradient(circle, var(--dot) var(--dot-size), transparent var(--dot-size));
-      background-size: var(--dot-gap) var(--dot-gap);
-      pointer-events: none;
-    }
+/* timeline header */
+.tl-header{position:sticky;top:0;background:var(--surface);border-bottom:1px solid var(--border);
+  z-index:5;height:52px;}
+.tl-month-row{display:flex;height:26px;align-items:flex-end;}
+.tl-month-cell{font-size:11px;font-weight:600;color:var(--text2);padding:0 8px 4px;
+  border-right:1px solid var(--border);flex-shrink:0;letter-spacing:.02em;}
+.tl-week-row{display:flex;height:26px;align-items:center;border-top:1px solid var(--border);}
+.tl-week-cell{font-size:9px;color:var(--text3);text-align:center;flex-shrink:0;
+  border-right:1px solid rgba(46,46,56,.4);}
 
-    /* ── Nodes ───────────────────────────────────── */
-    .node {
-      position: absolute;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
-      transition: box-shadow 0.15s;
-      cursor: default;
-    }
-    .node:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px var(--border2); }
-    .node.selected { box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 2px var(--blue); }
+/* timeline rows */
+.tl-row{height:32px;position:relative;border-bottom:1px solid rgba(46,46,56,.5);}
+.tl-row:hover{background:rgba(255,255,255,.015);}
+.tl-group-row{height:28px;background:rgba(255,255,255,.02);border-bottom:1px solid var(--border);}
 
-    .node-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 12px 14px 10px;
-      border-bottom: 1px solid var(--border);
-      cursor: grab;
-    }
-    .node-header:active { cursor: grabbing; }
+/* bars */
+.tl-bar{position:absolute;top:6px;height:20px;border-radius:4px;display:flex;align-items:center;
+  overflow:hidden;cursor:pointer;transition:filter .1s;}
+.tl-bar:hover{filter:brightness(1.2);}
+.tl-bar-label{font-size:10px;padding:0 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;}
+.tl-bar.retainer{background-image:repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(255,255,255,.05) 3px,rgba(255,255,255,.05) 6px);}
 
-    .node-icon {
-      width: 24px; height: 24px;
-      border-radius: 6px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 12px;
-      flex-shrink: 0;
-    }
+/* milestones */
+.tl-milestone{position:absolute;top:9px;width:14px;height:14px;transform:rotate(45deg);
+  cursor:pointer;z-index:3;}
+.tl-milestone-label{position:absolute;top:26px;font-size:9px;color:var(--text3);
+  white-space:nowrap;transform:translateX(-50%);pointer-events:none;}
 
-    .node-title {
-      font-weight: 600;
-      font-size: 13px;
-      flex: 1;
-    }
-    .node-subtitle {
-      font-size: 11px;
-      color: var(--text3);
-    }
+/* today line */
+.tl-today{position:absolute;top:0;bottom:0;width:1.5px;background:var(--accent);opacity:.7;
+  pointer-events:none;z-index:4;}
+.tl-today::before{content:'';position:absolute;top:0;left:-3px;width:7px;height:7px;
+  border-radius:50%;background:var(--accent);}
 
-    .node-body { padding: 12px 14px; }
+/* ══ DASHBOARD NODE ══ */
+.dashboard-node{width:780px;}
+.dash-body{padding:12px;}
+.dash-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.dash-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+  padding:14px 16px;min-height:100px;display:flex;flex-direction:column;justify-content:space-between;}
+.dash-card.wide{grid-column:span 2;}
+.dash-num{font-size:32px;font-weight:700;letter-spacing:-.02em;line-height:1;}
+.dash-num.big{font-size:28px;}
+.dash-label{display:flex;align-items:center;gap:8px;margin-top:8px;}
+.dash-label-icon{font-size:16px;opacity:.6;}
+.dash-label-text{font-size:12px;color:var(--text2);}
+.dash-chart{height:50px;position:relative;margin-top:6px;}
+.dash-sparkline{width:100%;height:100%;}
+.dash-row2{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-top:8px;}
 
-    /* ── Badge / chips ───────────────────────────── */
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 2px 8px;
-      border-radius: 99px;
-      font-size: 11px;
-      font-weight: 500;
-    }
-    .badge-red    { background: rgba(232,48,74,0.15); color: #e8304a; }
-    .badge-green  { background: rgba(45,158,110,0.15); color: #2d9e6e; }
-    .badge-amber  { background: rgba(212,146,26,0.15); color: #d4921a; }
-    .badge-blue   { background: rgba(58,123,213,0.15); color: #6aa0f0; }
-    .badge-gray   { background: var(--surface2); color: var(--text2); }
+/* ══ WEEK NODE ══ */
+.week-node{width:440px;}
+.week-grid{display:grid;grid-template-columns:148px repeat(5,1fr);gap:0;font-size:11px;}
+.wg-head{padding:5px 6px;color:var(--text3);text-align:center;border-bottom:1px solid var(--border);
+  font-weight:600;font-size:9px;letter-spacing:.05em;text-transform:uppercase;}
+.wg-head:first-child{text-align:left;}
+.wg-label{padding:7px 8px;color:var(--text2);font-weight:500;display:flex;align-items:center;
+  gap:6px;border-bottom:1px solid var(--border);font-size:11px;overflow:hidden;}
+.wg-label .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.wg-cell{padding:5px 3px;text-align:center;border-bottom:1px solid var(--border);
+  border-left:1px solid var(--border);display:flex;align-items:center;justify-content:center;}
+.frac-btn{background:var(--surface2);border:1px solid var(--border2);border-radius:5px;
+  color:var(--text2);cursor:pointer;padding:3px 0;font-size:10px;font-weight:600;
+  width:40px;transition:all .1s;}
+.frac-btn:hover{border-color:var(--blue);color:var(--text);}
+.frac-btn.f1{background:rgba(45,158,110,.2);border-color:var(--green);color:var(--green);}
+.frac-btn.fh{background:rgba(212,146,26,.15);border-color:var(--amber);color:var(--amber);}
+.frac-btn.fq{background:rgba(58,123,213,.12);border-color:var(--blue);color:#6aa0f0;}
+.week-foot{display:flex;justify-content:space-between;align-items:center;
+  padding:8px 0 0;border-top:1px solid var(--border);margin-top:4px;font-size:11px;color:var(--text2);}
 
-    /* ── Node: Weekly planner ────────────────────── */
-    .week-node { width: 420px; }
+/* ══ RESOURCES NODE ══ */
+.resources-node{width:520px;}
+.person-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);}
+.person-row:last-child{border-bottom:none;}
+.avatar{width:26px;height:26px;border-radius:50%;background:var(--surface2);border:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--text2);flex-shrink:0;}
+.pname{font-size:12px;font-weight:500;min-width:120px;}
+.prole{font-size:10px;color:var(--text3);min-width:60px;}
+.bar-wrap{flex:1;background:var(--surface2);border-radius:4px;height:7px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:4px;}
+.ppct{font-size:11px;color:var(--text2);min-width:30px;text-align:right;}
 
-    .week-grid {
-      display: grid;
-      grid-template-columns: 140px repeat(5, 1fr);
-      gap: 0;
-      font-size: 11px;
-    }
-    .week-grid .col-head {
-      padding: 6px 8px;
-      color: var(--text3);
-      text-align: center;
-      border-bottom: 1px solid var(--border);
-      font-weight: 600;
-      font-size: 10px;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }
-    .week-grid .col-head:first-child { text-align: left; }
-    .week-grid .row-label {
-      padding: 8px 8px;
-      color: var(--text2);
-      font-weight: 500;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      border-bottom: 1px solid var(--border);
-      font-size: 11px;
-    }
-    .week-grid .row-label .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .week-grid .cell {
-      padding: 6px 4px;
-      text-align: center;
-      border-bottom: 1px solid var(--border);
-      border-left: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .week-grid .cell:last-child { border-right: none; }
+/* ══ LEAVE NODE ══ */
+.leave-node{width:380px;}
+.leave-cal{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;margin-bottom:10px;}
+.cal-month{font-size:9px;color:var(--text3);text-align:center;padding-bottom:2px;}
+.cal-bar{height:13px;border-radius:3px;background:var(--surface2);position:relative;overflow:hidden;}
+.cal-bar .fill{position:absolute;top:0;bottom:0;border-radius:3px;}
 
-    .fraction-btn {
-      background: var(--surface2);
-      border: 1px solid var(--border2);
-      border-radius: 6px;
-      color: var(--text2);
-      cursor: pointer;
-      padding: 3px 7px;
-      font-size: 10px;
-      font-weight: 600;
-      transition: all 0.1s;
-      width: 44px;
-    }
-    .fraction-btn:hover { border-color: var(--blue); color: var(--text); background: rgba(58,123,213,0.1); }
-    .fraction-btn.filled { background: rgba(45,158,110,0.2); border-color: var(--green); color: var(--green); }
-    .fraction-btn.half   { background: rgba(212,146,26,0.15); border-color: var(--amber); color: var(--amber); }
+/* ══ SNABBKALKYL NODE ══ */
+.calc-node{width:340px;}
+.calc-field{margin-bottom:10px;}
+.calc-label{font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:500;letter-spacing:.03em;text-transform:uppercase;}
+.calc-input{width:100%;background:var(--surface2);border:1px solid var(--border);
+  border-radius:6px;color:var(--text);font-size:13px;padding:7px 10px;outline:none;
+  transition:border-color .12s;}
+.calc-input:focus{border-color:var(--blue);}
+.calc-result{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;
+  padding:12px 14px;margin-top:4px;}
+.calc-result-num{font-size:26px;font-weight:700;letter-spacing:-.02em;}
+.calc-result-sub{font-size:11px;color:var(--text3);margin-top:3px;}
+.calc-btn{width:100%;background:var(--blue);border:none;border-radius:7px;color:#fff;
+  font-size:13px;font-weight:600;padding:9px;cursor:pointer;margin-top:10px;
+  transition:background .12s;}
+.calc-btn:hover{background:#2d6abf;}
 
-    .week-total {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 0 0;
-      border-top: 1px solid var(--border);
-      margin-top: 4px;
-      font-size: 11px;
-      color: var(--text2);
-    }
-    .week-total strong { color: var(--text); }
+/* ══ NEW BIZ NODE ══ */
+.newbiz-node{width:660px;}
+.kanban-wrap{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;}
+.kanban-wrap::-webkit-scrollbar{height:3px;}
+.kanban-wrap::-webkit-scrollbar-thumb{background:var(--border2);}
+.kboard{flex-shrink:0;width:150px;}
+.kboard-hdr{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--text3);padding:0 0 8px;display:flex;align-items:center;gap:6px;}
+.kboard-count{background:var(--surface2);border-radius:99px;padding:1px 7px;font-size:10px;
+  color:var(--text2);font-weight:600;}
+.kcard{background:var(--surface2);border:1px solid var(--border);border-radius:7px;
+  padding:9px 10px;margin-bottom:6px;cursor:pointer;transition:border-color .1s;}
+.kcard:hover{border-color:var(--border2);}
+.kcard-name{font-size:12px;font-weight:500;margin-bottom:4px;}
+.kcard-val{font-size:11px;color:var(--text3);}
+.kcard-meta{display:flex;align-items:center;gap:6px;margin-top:6px;}
+.kcard-dot{width:6px;height:6px;border-radius:50%;}
 
-    /* ── Node: Project list ──────────────────────── */
-    .project-node { width: 480px; }
+/* ══ AI ASSISTANT NODE ══ */
+.ai-node{width:360px;}
+.ai-body{padding:0;display:flex;flex-direction:column;height:380px;}
+.node.is-fullscreen .ai-body{height:calc(100% - 46px);}
+.ai-msgs{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:8px;}
+.ai-msgs::-webkit-scrollbar{width:3px;}
+.ai-msgs::-webkit-scrollbar-thumb{background:var(--border2);}
+.ai-msg{max-width:85%;padding:8px 11px;border-radius:10px;font-size:12px;line-height:1.5;}
+.ai-msg.user{background:var(--blue);color:#fff;align-self:flex-end;border-radius:10px 10px 3px 10px;}
+.ai-msg.ai{background:var(--surface2);color:var(--text);align-self:flex-start;border-radius:10px 10px 10px 3px;}
+.ai-msg.ai .ai-tag{font-size:10px;color:var(--text3);margin-bottom:3px;display:block;}
+.ai-input-row{display:flex;gap:6px;padding:10px 12px;border-top:1px solid var(--border);}
+.ai-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:7px;
+  color:var(--text);font-size:12px;padding:7px 10px;outline:none;resize:none;
+  font-family:inherit;}
+.ai-input:focus{border-color:var(--blue);}
+.ai-send{background:var(--blue);border:none;border-radius:7px;color:#fff;cursor:pointer;
+  padding:7px 12px;font-size:12px;transition:background .12s;}
+.ai-send:hover{background:#2d6abf;}
 
-    .proj-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 0;
-      border-bottom: 1px solid var(--border);
-      font-size: 12px;
-    }
-    .proj-row:last-child { border-bottom: none; }
-    .proj-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .proj-name { flex: 1; font-weight: 500; }
-    .proj-client { color: var(--text3); font-size: 11px; min-width: 80px; }
-    .proj-nr { color: var(--text3); font-size: 10px; font-family: monospace; min-width: 68px; text-align: right; }
+/* ══ MINIMAP ══ */
+#minimap{position:fixed;right:14px;bottom:14px;width:168px;height:110px;
+  background:rgba(22,22,26,.95);border:1px solid var(--border);border-radius:8px;
+  overflow:hidden;z-index:900;}
 
-    /* ── Node: Resource chart ────────────────────── */
-    .resource-node { width: 520px; }
+/* ══ CONTEXT MENU ══ */
+#ctx-menu{position:fixed;background:var(--surface);border:1px solid var(--border2);
+  border-radius:9px;padding:5px;z-index:2000;min-width:180px;
+  box-shadow:0 12px 40px rgba(0,0,0,.6);display:none;}
+.ctx-item{padding:7px 12px;border-radius:6px;cursor:pointer;font-size:12px;
+  color:var(--text2);display:flex;align-items:center;gap:8px;}
+.ctx-item:hover{background:var(--surface2);color:var(--text);}
+.ctx-sep{height:1px;background:var(--border);margin:4px 0;}
+.ctx-kbd{margin-left:auto;font-size:10px;color:var(--text3);}
 
-    .person-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 7px 0;
-      border-bottom: 1px solid var(--border);
-    }
-    .person-row:last-child { border-bottom: none; }
-    .avatar {
-      width: 26px; height: 26px;
-      border-radius: 50%;
-      background: var(--surface2);
-      border: 1px solid var(--border2);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 10px;
-      font-weight: 700;
-      color: var(--text2);
-      flex-shrink: 0;
-    }
-    .person-name { font-size: 12px; font-weight: 500; min-width: 120px; }
-    .bar-wrap { flex: 1; background: var(--surface2); border-radius: 4px; height: 8px; overflow: hidden; }
-    .bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
-    .person-pct { font-size: 11px; color: var(--text2); min-width: 32px; text-align: right; }
-    .person-role { font-size: 10px; color: var(--text3); min-width: 70px; }
-
-    /* ── Node: Vacation ──────────────────────────── */
-    .leave-node { width: 380px; }
-
-    .leave-cal {
-      display: grid;
-      grid-template-columns: repeat(12, 1fr);
-      gap: 3px;
-      margin-bottom: 10px;
-    }
-    .cal-month { font-size: 9px; color: var(--text3); text-align: center; padding-bottom: 2px; letter-spacing: 0.03em; }
-    .cal-bar { height: 14px; border-radius: 3px; background: var(--surface2); position: relative; overflow: hidden; }
-    .cal-bar .fill { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
-
-    /* ── Connection lines ────────────────────────── */
-    #connections-svg {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      pointer-events: none;
-      overflow: visible;
-    }
-    .conn-line {
-      fill: none;
-      stroke: var(--border2);
-      stroke-width: 1.5;
-      stroke-dasharray: 4 4;
-      opacity: 0.6;
-    }
-
-    /* ── Mini map ────────────────────────────────── */
-    #minimap {
-      position: fixed;
-      right: 16px;
-      bottom: 16px;
-      width: 180px;
-      height: 120px;
-      background: rgba(26,26,31,0.92);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      overflow: hidden;
-      z-index: 1000;
-    }
-    #minimap-canvas { width: 100%; height: 100%; }
-
-    /* ── Context menu ────────────────────────────── */
-    #ctx-menu {
-      position: fixed;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 4px;
-      z-index: 2000;
-      min-width: 160px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-      display: none;
-    }
-    .ctx-item {
-      padding: 7px 12px;
-      border-radius: 5px;
-      cursor: pointer;
-      font-size: 12px;
-      color: var(--text2);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .ctx-item:hover { background: var(--surface2); color: var(--text); }
-    .ctx-sep { height: 1px; background: var(--border); margin: 3px 0; }
-
-    /* ── Tooltip ─────────────────────────────────── */
-    .tip {
-      position: fixed;
-      background: rgba(10,10,14,0.95);
-      border: 1px solid var(--border);
-      border-radius: 5px;
-      padding: 4px 10px;
-      font-size: 11px;
-      color: var(--text);
-      pointer-events: none;
-      z-index: 3000;
-      display: none;
-    }
-
-    /* ── Scrollbars ──────────────────────────────── */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
-  </style>
+/* ── Scrollbars ── */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+</style>
 </head>
 <body>
 
-<!-- Auth overlay -->
+<!-- Auth -->
 <div id="auth-overlay" style="display:none;position:fixed;inset:0;background:#111113;z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:16px">
-  <div style="font-size:18px;font-weight:800;letter-spacing:0.08em;color:#e8e8f0;margin-bottom:8px">JUNG</div>
+  <div style="font-size:18px;font-weight:800;letter-spacing:.1em;margin-bottom:8px">JUNG</div>
   <form id="auth-form" style="display:flex;flex-direction:column;gap:10px;align-items:center">
     <input id="auth-input" type="password" placeholder="Lösenord" autocomplete="current-password"
-      style="background:#1a1a1f;border:1px solid #2e2e38;border-radius:8px;color:#e8e8f0;font-size:16px;padding:10px 16px;outline:none;width:220px;text-align:center;letter-spacing:0.2em"
-      onfocus="this.style.borderColor='#3a7bd5'" onblur="this.style.borderColor='#2e2e38'" />
+      style="background:#1a1a1f;border:1px solid #2e2e38;border-radius:8px;color:#e8e8f0;font-size:16px;padding:10px 16px;outline:none;width:220px;text-align:center;letter-spacing:.2em"
+      onfocus="this.style.borderColor='#3a7bd5'" onblur="this.style.borderColor='#2e2e38'"/>
     <button type="submit" style="background:#3a7bd5;border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:13px;font-weight:600;padding:10px 32px;width:220px">Logga in</button>
     <div id="auth-error" style="display:none;color:#e8304a;font-size:12px">Fel lösenord</div>
   </form>
 </div>
 
+<!-- Fullscreen backdrop -->
+<div id="fs-backdrop"></div>
+
 <!-- Toolbar -->
 <div id="toolbar">
   <span class="logo">JUNG</span>
-  <div class="divider"></div>
-  <div class="tool-group">
-    <button class="tool-btn active" id="btn-select" title="Markera  V">
-      <svg width="11" height="13" viewBox="0 0 11 13" fill="none"><path d="M1 1l9 5.5-5 1.2L3.5 12 1 1z" fill="currentColor"/></svg>
+  <div class="tb-sep"></div>
+  <div class="tb-group">
+    <button class="tb-btn active" id="btn-v" title="Markera  V">
+      <svg width="10" height="12" viewBox="0 0 10 12" fill="none"><path d="M1 1l8 5-4.2 1L3.2 11z" fill="currentColor"/></svg>
     </button>
-    <button class="tool-btn" id="btn-hand" title="Panorera  H  /  Håll Space">
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 1.5C5 .67 5.67 0 6.5 0S8 .67 8 1.5V6h.5C9.33 6 10 6.67 10 7.5v.09c.31-.37.78-.59 1.3-.59.9 0 1.7.7 1.7 1.6v.4c.31-.26.7-.5 1-.5.9 0 1 .9 1 1.5v1.4C14 12.9 12.3 14 10 14H6c-1.7 0-3-1.1-3.8-2.8L.4 7.5C.1 6.8.4 6 1.1 5.7c.7-.3 1.5 0 1.9.6L4 7.5V1.5C4 .67 4.67 0 5.5 0S5 .67 5 1.5z" fill="currentColor" fill-rule="evenodd"/></svg>
+    <button class="tb-btn" id="btn-h" title="Panorera  H / Space">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M4.5 1C4.5.45 4.95 0 5.5 0S6.5.45 6.5 1v4h.5C7.6 5 8 5.4 8 6v.1c.28-.34.7-.6 1.2-.6.86 0 1.3.6 1.3 1.4v.4c.28-.24.64-.4.96-.4.83 0 1.04.8 1.04 1.5v1.4C12.5 11.5 11 13 9 13H5.5C3.9 13 2.7 12 2 10.5L.4 7C.1 6.3.4 5.5 1.1 5.2c.7-.3 1.5.1 1.8.7L4 7V1C4 .45 4.4 0 4.5 1z" fill="currentColor"/></svg>
     </button>
-    <button class="tool-btn" id="btn-zoom" title="Zooma  Z  /  Alt+klick zoomar ut">
-      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="4" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M9 9l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M3.5 5.5h4M5.5 3.5v4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+    <button class="tb-btn" id="btn-z" title="Zoom  Z">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="5" cy="5" r="3.5" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M8 8l3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M3.5 5h3M5 3.5v3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
     </button>
   </div>
-  <div class="divider"></div>
-  <button class="tool-btn" id="btn-fit" title="Zoom to fit  ⇧1">Anpassa vy</button>
-  <button class="tool-btn" id="btn-new-node">+ Nod</button>
-  <div class="divider"></div>
-  <button class="tool-btn" id="btn-zoom-out" title="Zooma ut  ⌘−" style="padding:5px 8px">−</button>
-  <span id="zoom-display" style="cursor:pointer;min-width:44px;text-align:center;color:var(--text2);font-size:12px" title="Återställ till 100%  ⌘0">100%</span>
-  <button class="tool-btn" id="btn-zoom-in"  title="Zooma in  ⌘+" style="padding:5px 8px">+</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" id="btn-fit" title="Zoom to fit  ⇧1">Anpassa vy</button>
+  <button class="tb-btn" id="btn-add">+ Nod</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" id="btn-zi" title="⌘+" style="padding:5px 8px">−</button>
+  <span id="zoom-display" title="Återställ 100%  ⌘0">100%</span>
+  <button class="tb-btn" id="btn-zo" title="⌘−" style="padding:5px 8px">+</button>
 </div>
 
 <!-- Canvas -->
 <div id="canvas-wrap">
-  <div id="canvas">
-    <svg id="connections-svg"></svg>
+<div id="canvas">
+<svg id="connections-svg"></svg>
 
-    <!-- NODE 1: Veckovy / Tidfördelning ─────────────────────────── -->
-    <div class="node week-node" id="node-week" style="left:300px; top:200px">
-      <div class="node-header" data-node-id="node-week">
-        <div class="node-icon" style="background:rgba(58,123,213,0.15)">📅</div>
-        <div>
-          <div class="node-title">Veckovy · v.14</div>
-          <div class="node-subtitle">Joel Cornéer · 31 mar – 4 apr</div>
-        </div>
-        <span class="badge badge-blue" style="margin-left:auto">Aktiv</span>
+<!-- ══ NODE: DASHBOARD ══════════════════════════════════════════ -->
+<div class="node dashboard-node" id="nd" style="left:180px;top:180px">
+  <div class="node-header" data-nid="nd">
+    <div class="node-icon" style="background:rgba(139,92,246,.15)">⚡</div>
+    <div class="node-meta"><div class="node-title">Dashboard</div><div class="node-subtitle">Jung · Översikt</div></div>
+    <div class="node-actions">
+      <button class="na-btn" data-action="collapse" title="Minimera">
+        <svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1l3.5 4L8 1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      </button>
+      <button class="na-btn" data-action="snap" title="Snäpp till sida">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x=".5" y=".5" width="4" height="9" rx="1" stroke="currentColor"/><rect x="5.5" y=".5" width="4" height="9" rx="1" stroke="currentColor"/></svg>
+      </button>
+      <button class="na-btn" data-action="fullscreen" title="Helskärm">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 4V1h3M6 1h3v3M9 6v3H6M4 9H1V6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="node-body dash-body">
+    <div class="dash-grid">
+      <div class="dash-card">
+        <div class="dash-num">65</div>
+        <div class="dash-label"><span class="dash-label-icon">👥</span><span class="dash-label-text">Kunder</span></div>
       </div>
-      <div class="node-body">
-        <div class="week-grid" id="week-grid">
-          <div class="col-head">Projekt</div>
-          <div class="col-head">MÅN</div>
-          <div class="col-head">TIS</div>
-          <div class="col-head">ONS</div>
-          <div class="col-head">TOR</div>
-          <div class="col-head">FRE</div>
+      <div class="dash-card">
+        <div class="dash-num">162</div>
+        <div class="dash-label"><span class="dash-label-icon">📁</span><span class="dash-label-text">Aktiva projekt</span></div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-num big">864 824 <span style="font-size:14px;font-weight:400;color:var(--text2)">kr</span></div>
+        <div class="dash-label"><span class="dash-label-icon">📈</span><span class="dash-label-text">Prognos</span></div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-num big">864 824 <span style="font-size:14px;font-weight:400;color:var(--text2)">kr</span></div>
+        <div class="dash-label"><span class="dash-label-icon">🏦</span><span class="dash-label-text">Projektbudget</span></div>
+      </div>
+    </div>
+    <div class="dash-row2">
+      <div class="dash-card" style="min-height:80px">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
+          <span>Största prognoser</span>
+          <span style="display:flex;gap:4px">
+            <span class="badge badge-gray">3m</span>
+            <span class="badge badge-red">Alla</span>
+          </span>
         </div>
-
-        <div class="week-total" style="margin-top:10px">
-          <span>Veckokapacitet</span>
-          <strong id="week-summary">0 / 5 dagar allokerade</strong>
+        <div class="dash-chart"><svg class="dash-sparkline" id="sparkline-svg" viewBox="0 0 320 50" preserveAspectRatio="none"></svg></div>
+      </div>
+      <div class="dash-card" style="text-align:center;justify-content:center;gap:4px">
+        <div style="font-size:28px;font-weight:700;letter-spacing:-.02em" id="clock-display">00:00</div>
+        <div style="font-size:10px;color:var(--text3)" id="date-display">—</div>
+      </div>
+      <div class="dash-card" style="justify-content:center;align-items:center;gap:8px;flex-direction:row">
+        <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);flex-shrink:0"></div>
+        <div>
+          <div style="font-size:12px;font-weight:600">Dark mode</div>
+          <div style="font-size:10px;color:var(--text3)">Alltid aktivt</div>
         </div>
       </div>
     </div>
+  </div>
+</div>
 
-    <!-- NODE 2: Projekt ──────────────────────────────────────────── -->
-    <div class="node project-node" id="node-projects" style="left:780px; top:200px">
-      <div class="node-header" data-node-id="node-projects">
-        <div class="node-icon" style="background:rgba(45,158,110,0.15)">📋</div>
-        <div>
-          <div class="node-title">Aktiva projekt</div>
-          <div class="node-subtitle">167 totalt · 156 saknar periodisering</div>
-        </div>
-        <span class="badge badge-red" style="margin-left:auto">69 saknar perioder</span>
-      </div>
-      <div class="node-body">
-        <div class="proj-row">
-          <div class="proj-dot" style="background:#3a7bd5"></div>
-          <span class="proj-name">Almedalen 2026</span>
-          <span class="proj-client">Volvo</span>
-          <span class="badge badge-green">Aktiv</span>
-          <span class="proj-nr">VOLV-AL26</span>
-        </div>
-        <div class="proj-row">
-          <div class="proj-dot" style="background:#e8304a"></div>
-          <span class="proj-name">Blueprint revision</span>
-          <span class="proj-client">Volvo Cars</span>
-          <span class="badge badge-red">Saknar period</span>
-          <span class="proj-nr">VOLV 0114</span>
-        </div>
-        <div class="proj-row">
-          <div class="proj-dot" style="background:#2d9e6e"></div>
-          <span class="proj-name">Audiobooks marknad kampanj</span>
-          <span class="proj-client">Spotify</span>
-          <span class="badge badge-green">Aktiv</span>
-          <span class="proj-nr">SPOT 0159</span>
-        </div>
-        <div class="proj-row">
-          <div class="proj-dot" style="background:#d4921a"></div>
-          <span class="proj-name">Grammis branding event</span>
-          <span class="proj-client">Spotify</span>
-          <span class="badge badge-amber">Pausad</span>
-          <span class="proj-nr">SPOT 0175</span>
-        </div>
-        <div class="proj-row">
-          <div class="proj-dot" style="background:#9b59b6"></div>
-          <span class="proj-name">Pophouse Retainer</span>
-          <span class="proj-client">TAPT</span>
-          <span class="badge badge-green">Aktiv</span>
-          <span class="proj-nr">TAPT 0001</span>
-        </div>
-        <div class="proj-row">
-          <div class="proj-dot" style="background:#e8304a"></div>
-          <span class="proj-name">Neko Health</span>
-          <span class="proj-client">TAPT</span>
-          <span class="badge badge-red">Saknar period</span>
-          <span class="proj-nr">TAPT 0006</span>
-        </div>
-        <div class="proj-row" style="border:none; padding-bottom:0">
-          <div class="proj-dot" style="background:#3a7bd5"></div>
-          <span class="proj-name">Pågående test 2</span>
-          <span class="proj-client">Spendrups</span>
-          <span class="badge badge-green">Aktiv</span>
-          <span class="proj-nr">HEMA 0002</span>
-        </div>
-      </div>
+<!-- ══ NODE: AKTIVA PROJEKT (TIMELINE) ═══════════════════════════ -->
+<div class="node timeline-node" id="ntl" style="left:1040px;top:180px">
+  <div class="node-header" data-nid="ntl">
+    <div class="node-icon" style="background:rgba(45,158,110,.15)">📊</div>
+    <div class="node-meta"><div class="node-title">Aktiva projekt · Tidslinje</div><div class="node-subtitle">2026 · 167 projekt · 8 kunder</div></div>
+    <div style="display:flex;gap:6px;align-items:center;margin-left:8px">
+      <button class="tb-btn" style="font-size:10px;padding:3px 8px" id="tl-today-btn">Idag</button>
+      <span class="badge badge-gray" style="font-size:9px">v.13</span>
     </div>
-
-    <!-- NODE 3: Resursbeläggning ─────────────────────────────────── -->
-    <div class="node resource-node" id="node-resources" style="left:300px; top:680px">
-      <div class="node-header" data-node-id="node-resources">
-        <div class="node-icon" style="background:rgba(212,146,26,0.15)">👥</div>
-        <div>
-          <div class="node-title">Resursbeläggning</div>
-          <div class="node-subtitle">Närmaste månaden · 38 aktiva</div>
-        </div>
-        <span class="badge badge-amber" style="margin-left:auto">1% beläggning</span>
-      </div>
-      <div class="node-body">
-        <div class="person-row">
-          <div class="avatar">JC</div>
-          <span class="person-name">Joel Cornéer</span>
-          <span class="person-role">Kreativ</span>
-          <div class="bar-wrap"><div class="bar-fill" style="width:62%;background:#3a7bd5"></div></div>
-          <span class="person-pct">62%</span>
-        </div>
-        <div class="person-row">
-          <div class="avatar">AS</div>
-          <span class="person-name">Anna v. Stockenström</span>
-          <span class="person-role">Klient</span>
-          <div class="bar-wrap"><div class="bar-fill" style="width:47%;background:#2d9e6e"></div></div>
-          <span class="person-pct">47%</span>
-        </div>
-        <div class="person-row">
-          <div class="avatar">JS</div>
-          <span class="person-name">Jonas Sevenius</span>
-          <span class="person-role">Strategi</span>
-          <div class="bar-wrap"><div class="bar-fill" style="width:26%;background:#d4921a"></div></div>
-          <span class="person-pct">26%</span>
-        </div>
-        <div class="person-row">
-          <div class="avatar">MS</div>
-          <span class="person-name">Mårten Strassburg</span>
-          <span class="person-role">Strategi</span>
-          <div class="bar-wrap"><div class="bar-fill" style="width:15%;background:#d4921a"></div></div>
-          <span class="person-pct">15%</span>
-        </div>
-        <div class="person-row">
-          <div class="avatar">MA</div>
-          <span class="person-name">Martin Abrahamsson</span>
-          <span class="person-role">Kreativ</span>
-          <div class="bar-wrap"><div class="bar-fill" style="width:8%;background:#e8304a"></div></div>
-          <span class="person-pct">8%</span>
-        </div>
-        <div class="person-row" style="border:none;padding-bottom:0">
-          <div class="avatar">NK</div>
-          <span class="person-name">+ 33 till</span>
-          <span class="person-role"></span>
-          <div class="bar-wrap"><div class="bar-fill" style="width:0%;background:#3a7bd5"></div></div>
-          <span class="person-pct" style="color:var(--text3)">—</span>
-        </div>
-      </div>
+    <div class="node-actions">
+      <button class="na-btn" data-action="collapse" title="Minimera"><svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1l3.5 4L8 1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+      <button class="na-btn" data-action="snap" title="Snäpp"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x=".5" y=".5" width="4" height="9" rx="1" stroke="currentColor"/><rect x="5.5" y=".5" width="4" height="9" rx="1" stroke="currentColor"/></svg></button>
+      <button class="na-btn" data-action="fullscreen" title="Helskärm"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 4V1h3M6 1h3v3M9 6v3H6M4 9H1V6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></button>
     </div>
+  </div>
+  <div class="node-body tl-body">
+    <div class="tl-sidebar" id="tl-sidebar"></div>
+    <div class="tl-scroll" id="tl-scroll"><div class="tl-inner" id="tl-inner"></div></div>
+  </div>
+</div>
 
-    <!-- NODE 4: Semester & Frånvaro ─────────────────────────────── -->
-    <div class="node leave-node" id="node-leave" style="left:880px; top:680px">
-      <div class="node-header" data-node-id="node-leave">
-        <div class="node-icon" style="background:rgba(155,89,182,0.15)">🏖</div>
-        <div>
-          <div class="node-title">Semester & Frånvaro</div>
-          <div class="node-subtitle">2026 · Hela året</div>
-        </div>
-      </div>
-      <div class="node-body">
-        <div style="font-size:10px;color:var(--text3);margin-bottom:6px;display:flex;gap:12px">
-          <span>🟡 Semester</span>
-          <span style="color:#9b59b6">● Föräldraledighet</span>
-          <span style="color:#3a7bd5">● Tjänstledig</span>
-        </div>
-        <div class="leave-cal" id="leave-cal"></div>
-        <div style="border-top:1px solid var(--border);padding-top:10px;font-size:11px;color:var(--text2)">
-          <div style="display:flex;justify-content:space-between">
-            <span>Marita Kuntonen</span>
-            <span style="color:var(--amber)">Semester v.12–16</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;margin-top:4px">
-            <span>Victoria Westöö</span>
-            <span style="color:var(--text3)">Ansökt v.14</span>
-          </div>
-        </div>
-      </div>
+<!-- ══ NODE: VECKOVY ══════════════════════════════════════════════ -->
+<div class="node week-node" id="nwk" style="left:180px;top:760px">
+  <div class="node-header" data-nid="nwk">
+    <div class="node-icon" style="background:rgba(58,123,213,.15)">📅</div>
+    <div class="node-meta"><div class="node-title">Veckovy · v.14</div><div class="node-subtitle">Joel Cornéer · 31 mar – 4 apr</div></div>
+    <span class="badge badge-blue" style="margin-right:6px">Aktiv</span>
+    <div class="node-actions">
+      <button class="na-btn" data-action="collapse"><svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1l3.5 4L8 1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+      <button class="na-btn" data-action="snap"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x=".5" y=".5" width="4" height="9" rx="1" stroke="currentColor"/><rect x="5.5" y=".5" width="4" height="9" rx="1" stroke="currentColor"/></svg></button>
+      <button class="na-btn" data-action="fullscreen"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 4V1h3M6 1h3v3M9 6v3H6M4 9H1V6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></button>
     </div>
+  </div>
+  <div class="node-body"><div class="week-grid" id="week-grid"></div>
+    <div class="week-foot"><span>Veckokapacitet</span><strong id="week-sum">—</strong></div>
+  </div>
+</div>
 
-  </div><!-- /canvas -->
+<!-- ══ NODE: RESURSBELÄGGNING ═════════════════════════════════════ -->
+<div class="node resources-node" id="nrs" style="left:700px;top:760px">
+  <div class="node-header" data-nid="nrs">
+    <div class="node-icon" style="background:rgba(212,146,26,.15)">👥</div>
+    <div class="node-meta"><div class="node-title">Resursbeläggning</div><div class="node-subtitle">Närmaste månaden · 38 aktiva</div></div>
+    <span class="badge badge-amber" style="margin-right:6px">1% beläggning</span>
+    <div class="node-actions">
+      <button class="na-btn" data-action="collapse"><svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1l3.5 4L8 1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+      <button class="na-btn" data-action="snap"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x=".5" y=".5" width="4" height="9" rx="1" stroke="currentColor"/><rect x="5.5" y=".5" width="4" height="9" rx="1" stroke="currentColor"/></svg></button>
+      <button class="na-btn" data-action="fullscreen"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 4V1h3M6 1h3v3M9 6v3H6M4 9H1V6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></button>
+    </div>
+  </div>
+  <div class="node-body">
+    <div class="person-row"><div class="avatar">JC</div><span class="pname">Joel Cornéer</span><span class="prole">Kreativ</span><div class="bar-wrap"><div class="bar-fill" style="width:62%;background:#3a7bd5"></div></div><span class="ppct">62%</span></div>
+    <div class="person-row"><div class="avatar">AS</div><span class="pname">Anna v. Stockenström</span><span class="prole">Klient</span><div class="bar-wrap"><div class="bar-fill" style="width:47%;background:#2d9e6e"></div></div><span class="ppct">47%</span></div>
+    <div class="person-row"><div class="avatar">JS</div><span class="pname">Jonas Sevenius</span><span class="prole">Strategi</span><div class="bar-wrap"><div class="bar-fill" style="width:26%;background:#d4921a"></div></div><span class="ppct">26%</span></div>
+    <div class="person-row"><div class="avatar">MS</div><span class="pname">Mårten Strassburg</span><span class="prole">Strategi</span><div class="bar-wrap"><div class="bar-fill" style="width:15%;background:#d4921a"></div></div><span class="ppct">15%</span></div>
+    <div class="person-row"><div class="avatar">MA</div><span class="pname">Martin Abrahamsson</span><span class="prole">Kreativ</span><div class="bar-wrap"><div class="bar-fill" style="width:8%;background:#e8304a"></div></div><span class="ppct">8%</span></div>
+    <div class="person-row" style="border:none"><div class="avatar" style="font-size:8px">+33</div><span class="pname" style="color:var(--text3)">övriga</span><span class="prole"></span><div class="bar-wrap"></div><span class="ppct" style="color:var(--text3)">—</span></div>
+  </div>
+</div>
+
+<!-- ══ NODE: SEMESTER & FRÅNVARO ═════════════════════════════════ -->
+<div class="node leave-node" id="nlv" style="left:1300px;top:760px">
+  <div class="node-header" data-nid="nlv">
+    <div class="node-icon" style="background:rgba(139,92,246,.15)">🏖</div>
+    <div class="node-meta"><div class="node-title">Semester & Frånvaro</div><div class="node-subtitle">2026 · Hela året</div></div>
+    <div class="node-actions">
+      <button class="na-btn" data-action="collapse"><svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1l3.5 4L8 1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+      <button class="na-btn" data-action="snap"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x=".5" y=".5" width="4" height="9" rx="1" stroke="currentColor"/><rect x="5.5" y=".5" width="4" height="9" rx="1" stroke="currentColor"/></svg></button>
+      <button class="na-btn" data-action="fullscreen"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 4V1h3M6 1h3v3M9 6v3H6M4 9H1V6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></button>
+    </div>
+  </div>
+  <div class="node-body">
+    <div style="font-size:10px;color:var(--text3);margin-bottom:6px;display:flex;gap:10px">
+      <span>🟡 Semester</span><span style="color:#9b59b6">● Föräldraledigt</span><span style="color:#3a7bd5">● Tjänstledig</span>
+    </div>
+    <div class="leave-cal" id="leave-cal"></div>
+    <div style="border-top:1px solid var(--border);padding-top:8px;font-size:11px;color:var(--text2)">
+      <div style="display:flex;justify-content:space-between"><span>Marita Kuntonen</span><span style="color:var(--amber)">Semester v.12–16</span></div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px"><span>Victoria Westöö</span><span style="color:var(--text3)">Ansökt v.14</span></div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px"><span>Jonas Sevenius</span><span style="color:var(--purple)">Föräldraledig v.20–32</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ NODE: SNABBKALKYL ══════════════════════════════════════════ -->
+<div class="node calc-node" id="nck" style="left:180px;top:1280px">
+  <div class="node-header" data-nid="nck">
+    <div class="node-icon" style="background:rgba(212,146,26,.15)">🧮</div>
+    <div class="node-meta"><div class="node-title">Snabbkalkyl</div><div class="node-subtitle">Snabb projektuppskattning</div></div>
+    <div class="node-actions">
+      <button class="na-btn" data-action="collapse"><svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1l3.5 4L8 1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+      <button class="na-btn" data-action="snap"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x=".5" y=".5" width="4" height="9" rx="1" stroke="currentColor"/><rect x="5.5" y=".5" width="4" height="9" rx="1" stroke="currentColor"/></svg></button>
+      <button class="na-btn" data-action="fullscreen"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 4V1h3M6 1h3v3M9 6v3H6M4 9H1V6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></button>
+    </div>
+  </div>
+  <div class="node-body">
+    <div class="calc-field"><div class="calc-label">Projektnamn</div>
+      <input class="calc-input" id="ck-name" type="text" placeholder="t.ex. Varumärkesuppdrag"/></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="calc-field"><div class="calc-label">Veckor</div>
+        <input class="calc-input" id="ck-weeks" type="number" value="6" min="1"/></div>
+      <div class="calc-field"><div class="calc-label">Pers.</div>
+        <input class="calc-input" id="ck-ppl" type="number" value="3" min="1"/></div>
+      <div class="calc-field"><div class="calc-label">Timmar/dag/pers.</div>
+        <input class="calc-input" id="ck-hrs" type="number" value="6" min="1" max="8"/></div>
+      <div class="calc-field"><div class="calc-label">Timpris (kr)</div>
+        <input class="calc-input" id="ck-rate" type="number" value="1200"/></div>
+    </div>
+    <div class="calc-result">
+      <div class="calc-result-num" id="ck-total">0 kr</div>
+      <div class="calc-result-sub" id="ck-detail">—</div>
+    </div>
+    <button class="calc-btn" id="ck-copy">Kopiera uppskattning</button>
+  </div>
+</div>
+
+<!-- ══ NODE: NEW BIZ PIPELINE ════════════════════════════════════ -->
+<div class="node newbiz-node" id="nnb" style="left:600px;top:1280px">
+  <div class="node-header" data-nid="nnb">
+    <div class="node-icon" style="background:rgba(45,158,110,.15)">🚀</div>
+    <div class="node-meta"><div class="node-title">New Biz · Pipeline</div><div class="node-subtitle">Q1 2026 · 14 leads · 3,2 Mkr</div></div>
+    <div class="node-actions">
+      <button class="na-btn" data-action="collapse"><svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1l3.5 4L8 1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+      <button class="na-btn" data-action="snap"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x=".5" y=".5" width="4" height="9" rx="1" stroke="currentColor"/><rect x="5.5" y=".5" width="4" height="9" rx="1" stroke="currentColor"/></svg></button>
+      <button class="na-btn" data-action="fullscreen"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 4V1h3M6 1h3v3M9 6v3H6M4 9H1V6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></button>
+    </div>
+  </div>
+  <div class="node-body"><div class="kanban-wrap" id="kanban-wrap"></div></div>
+</div>
+
+<!-- ══ NODE: AI-ASSISTENT ═════════════════════════════════════════ -->
+<div class="node ai-node" id="nai" style="left:1340px;top:1280px">
+  <div class="node-header" data-nid="nai">
+    <div class="node-icon" style="background:rgba(139,92,246,.15)">✦</div>
+    <div class="node-meta"><div class="node-title">AI-assistent</div><div class="node-subtitle">Jung Intelligence</div></div>
+    <div class="node-actions">
+      <button class="na-btn" data-action="collapse"><svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1l3.5 4L8 1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+      <button class="na-btn" data-action="snap"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x=".5" y=".5" width="4" height="9" rx="1" stroke="currentColor"/><rect x="5.5" y=".5" width="4" height="9" rx="1" stroke="currentColor"/></svg></button>
+      <button class="na-btn" data-action="fullscreen"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 4V1h3M6 1h3v3M9 6v3H6M4 9H1V6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></button>
+    </div>
+  </div>
+  <div class="node-body ai-body">
+    <div class="ai-msgs" id="ai-msgs">
+      <div class="ai-msg ai"><span class="ai-tag">Jung AI</span>Hej! Jag kan hjälpa dig med resursplanering, projektdata och prognoser. Vad undrar du?</div>
+    </div>
+    <div class="ai-input-row">
+      <textarea class="ai-input" id="ai-input" rows="1" placeholder="Fråga Jung AI…"></textarea>
+      <button class="ai-send" id="ai-send">↑</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /canvas -->
 </div><!-- /canvas-wrap -->
 
 <!-- Minimap -->
-<canvas id="minimap-canvas" width="180" height="120"></canvas>
-<div id="minimap" style="padding:0;display:flex;align-items:center;justify-content:center">
-  <canvas id="mm" width="178" height="118"></canvas>
-</div>
+<div id="minimap"><canvas id="mm" width="166" height="108"></canvas></div>
 
 <!-- Context menu -->
 <div id="ctx-menu">
-  <div class="ctx-item" id="ctx-new-week">📅 Ny veckovy-nod</div>
-  <div class="ctx-item" id="ctx-new-proj">📋 Ny projektlista-nod</div>
-  <div class="ctx-item" id="ctx-new-res">👥 Ny resurs-nod</div>
+  <div class="ctx-item" id="ctx-week">📅 Ny veckovy</div>
+  <div class="ctx-item" id="ctx-calc">🧮 Ny snabbkalkyl</div>
+  <div class="ctx-item" id="ctx-ai">✦ Ny AI-assistent</div>
   <div class="ctx-sep"></div>
-  <div class="ctx-item" id="ctx-fit">Anpassa vy</div>
+  <div class="ctx-item" id="ctx-fit">Anpassa vy <span class="ctx-kbd">⇧1</span></div>
   <div class="ctx-sep"></div>
-  <div class="ctx-item" id="ctx-zoom-in">Zooma in</div>
-  <div class="ctx-item" id="ctx-zoom-out">Zooma ut</div>
+  <div class="ctx-item" id="ctx-zi">Zooma in <span class="ctx-kbd">⌘+</span></div>
+  <div class="ctx-item" id="ctx-zo">Zooma ut <span class="ctx-kbd">⌘−</span></div>
 </div>
 
-<div class="tip" id="tip"></div>
-
 <script>
-/* ══════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════
    DATA
-══════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════ */
 const PROJECTS = [
-  { id:'almedalen', name:'Almedalen 2026',      client:'Volvo',     color:'#3a7bd5' },
-  { id:'blueprint', name:'Blueprint revision',  client:'Volvo Cars',color:'#e8304a' },
-  { id:'audiobooks',name:'Audiobooks kampanj',  client:'Spotify',   color:'#2d9e6e' },
-  { id:'grammis',   name:'Grammis event',       client:'Spotify',   color:'#d4921a' },
-  { id:'pophouse',  name:'Pophouse Retainer',   client:'TAPT',      color:'#9b59b6' },
-  { id:'neko',      name:'Neko Health',         client:'TAPT',      color:'#e87050' },
-  { id:'test2',     name:'Pågående test 2',     client:'Spendrups', color:'#3a7bd5' },
+  {id:'almedalen', name:'Almedalen 2026',       client:'Volvo',     color:'#3a7bd5'},
+  {id:'blueprint', name:'Blueprint revision',   client:'Volvo Cars',color:'#5a9df5'},
+  {id:'audiobooks',name:'Audiobooks kampanj',   client:'Spotify',   color:'#1db954'},
+  {id:'grammis',   name:'Grammis event',        client:'Spotify',   color:'#2dc96d'},
+  {id:'pophouse',  name:'Pophouse Retainer',    client:'TAPT',      color:'#e87050'},
+  {id:'neko',      name:'Neko Health',          client:'TAPT',      color:'#f59060'},
+  {id:'test2',     name:'Pågående test 2',      client:'Spendrups', color:'#d4921a'},
 ];
-
 const DAYS = ['MÅN','TIS','ONS','TOR','FRE'];
-const FRACTIONS = [
-  { label:'—', value:0, cls:'' },
-  { label:'¼', value:0.25, cls:'quarter' },
-  { label:'½', value:0.5, cls:'half' },
-  { label:'¾', value:0.75, cls:'three-q' },
-  { label:'1', value:1, cls:'filled' },
+const FRACS = [
+  {label:'—',val:0},
+  {label:'¼',val:.25},
+  {label:'½',val:.5},
+  {label:'¾',val:.75},
+  {label:'1',val:1},
+];
+const alloc = {};
+PROJECTS.forEach(p=>{alloc[p.id]=[0,0,0,0,0];});
+
+const TL_DATA = [
+  {client:'Volvo', color:'#3a7bd5', projects:[
+    {name:'Almedalen 2026',        start:'2026-03-16',end:'2026-06-12', ms:[{d:'2026-04-13',l:'Kick-off'},{d:'2026-06-12',l:'Leverans'}]},
+    {name:'Blueprint revision',    start:'2026-01-12',end:'2026-04-17', ms:[{d:'2026-02-23',l:'Review'}]},
+  ]},
+  {client:'Spotify', color:'#1db954', projects:[
+    {name:'Audiobooks kampanj',    start:'2026-02-02',end:'2026-07-17', ms:[{d:'2026-04-06',l:'Launch'}]},
+    {name:'Grammis branding event',start:'2026-03-09',end:'2026-05-04'},
+    {name:'Lou Lundberg event',    start:'2026-02-16',end:'2026-04-13'},
+    {name:'Designuppdrag Marknad', start:'2026-04-20',end:'2026-08-10'},
+  ]},
+  {client:'TAPT', color:'#e87050', projects:[
+    {name:'Pophouse Retainer',     start:'2026-01-05',end:'2026-12-14', retainer:true},
+    {name:'Neko Health',           start:'2026-04-06',end:'2026-09-07', ms:[{d:'2026-06-15',l:'Alpha'},{d:'2026-09-07',l:'Beta'}]},
+    {name:'Stilla AI',             start:'2026-03-02',end:'2026-06-22'},
+    {name:'Accelerator',           start:'2026-05-04',end:'2026-10-05'},
+  ]},
+  {client:'Spendrups', color:'#d4921a', projects:[
+    {name:'Pågående test 2',       start:'2026-03-09',end:'2026-08-03', ms:[{d:'2026-05-11',l:'Review'}]},
+    {name:'Årsredovisning 2026',   start:'2026-06-01',end:'2026-10-26'},
+  ]},
+  {client:'Wonderland', color:'#9b59b6', projects:[
+    {name:'Varumärke',             start:'2026-02-16',end:'2026-05-18'},
+  ]},
+  {client:'HEMA', color:'#e84040', projects:[
+    {name:'Marknadsstrategi Q3',   start:'2026-05-25',end:'2026-09-14'},
+  ]},
 ];
 
-// allocation[projectId][dayIndex] = fractionIndex (0-4)
-const allocation = {};
-PROJECTS.forEach(p => { allocation[p.id] = [0,0,0,0,0]; });
+const KANBAN_DATA = [
+  {col:'Prospekt', color:'#5a5a72', items:[
+    {name:'H&M Group',      val:'420 000 kr', tag:'Kreativ'},
+    {name:'Klarna',         val:'280 000 kr', tag:'Strategi'},
+    {name:'IKEA Sweden',    val:'190 000 kr', tag:'Kreativ'},
+  ]},
+  {col:'Förslag', color:'#3a7bd5', items:[
+    {name:'Oatly',          val:'650 000 kr', tag:'Brand'},
+    {name:'Sandvik',        val:'320 000 kr', tag:'Kreativ'},
+  ]},
+  {col:'Förhandling', color:'#d4921a', items:[
+    {name:'ABB Robotics',   val:'1 200 000 kr', tag:'Kampanj'},
+    {name:'Volvo Trucks',   val:'840 000 kr', tag:'Kreativ'},
+  ]},
+  {col:'Vunnet', color:'#2d9e6e', items:[
+    {name:'Husqvarna',      val:'560 000 kr', tag:'Brand'},
+    {name:'Essity',         val:'380 000 kr', tag:'Design'},
+  ]},
+];
 
-/* ══════════════════════════════════════════════════════
-   WEEK GRID BUILD
-══════════════════════════════════════════════════════ */
-function buildWeekGrid() {
-  const grid = document.getElementById('week-grid');
-  // Remove old rows
-  [...grid.querySelectorAll('.week-proj-row')].forEach(r => r.remove());
+const AI_RESPONSES = [
+  'Baserat på aktuell beläggning har ni kapacitet för 2 nya projekt med start i maj.',
+  'Spotify-projekten tar upp 34% av er totala resurskapacitet just nu.',
+  'Joel Cornéer är belagd 62% – det finns utrymme för ytterligare ett projekt.',
+  'Prognosen för Q2 ser stark ut. Budgetavvikelsen är under 5%.',
+  'Jag ser att 156 projekt saknar periodisering – vill du att jag prioriterar vilka som bör fixas?',
+  'TAPT-kontot har växt med 22% YoY. Starka siffror.',
+];
 
-  PROJECTS.forEach(proj => {
-    // Label
-    const label = document.createElement('div');
-    label.className = 'row-label week-proj-row';
-    label.innerHTML = `<div class="dot" style="background:${proj.color}"></div>${proj.name}`;
-    grid.appendChild(label);
+/* ═══════════════════════════════════════════════════════════
+   TIMELINE RENDERER
+═══════════════════════════════════════════════════════════ */
+const TL_EPOCH = new Date('2026-01-05').getTime();
+const TL_END_MS = new Date('2026-12-28').getTime();
+const TL_WW = 38;      // px per week
+const TL_RH = 32;      // row height
+const TL_TOTAL_W = Math.ceil((TL_END_MS - TL_EPOCH) / (7*864e5)) * TL_WW;
 
-    // Cells
-    DAYS.forEach((_, di) => {
-      const cell = document.createElement('div');
-      cell.className = 'cell week-proj-row';
-      const btn = document.createElement('button');
-      btn.className = 'fraction-btn';
-      const fi = allocation[proj.id][di];
-      const frac = FRACTIONS[fi];
-      btn.textContent = frac.label === '—' ? '—' : frac.label;
-      if (frac.value >= 1) btn.classList.add('filled');
-      else if (frac.value >= 0.5) btn.classList.add('half');
-      btn.title = `${proj.name} ${DAYS[di]}: ${Math.round(frac.value*100)}%`;
-      btn.addEventListener('click', () => {
-        allocation[proj.id][di] = (allocation[proj.id][di] + 1) % FRACTIONS.length;
-        buildWeekGrid();
-        updateWeekSummary();
+function tlX(dateStr){ return Math.round((new Date(dateStr).getTime()-TL_EPOCH)/(7*864e5)*TL_WW); }
+
+function buildTimeline(){
+  const sb  = document.getElementById('tl-sidebar');
+  const inn = document.getElementById('tl-inner');
+  sb.innerHTML = inn.innerHTML = '';
+
+  inn.style.cssText = `width:${TL_TOTAL_W}px;position:relative;`;
+
+  // ── Header ──────────────────────────────────────────────
+  const hdr = document.createElement('div');
+  hdr.className = 'tl-header';
+  hdr.style.width = TL_TOTAL_W + 'px';
+
+  const mrow = document.createElement('div'); mrow.className = 'tl-month-row';
+  const wrow = document.createElement('div'); wrow.className = 'tl-week-row';
+
+  const MONTHS=['Jan','Feb','Mar','Apr','Maj','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
+  let cur = new Date(TL_EPOCH), weekIdx=0;
+  let monthStarts={};
+
+  // Walk week by week
+  while(cur.getTime() <= TL_END_MS){
+    const m = cur.getMonth();
+    if(!monthStarts[m]) monthStarts[m]={x:weekIdx*TL_WW, count:0};
+    monthStarts[m].count++;
+    const wc = document.createElement('div');
+    wc.className='tl-week-cell';
+    wc.style.width = TL_WW+'px';
+    wc.textContent = 'v'+(weekIdx+2); // rough week numbers
+    wrow.appendChild(wc);
+    cur = new Date(cur.getTime()+7*864e5);
+    weekIdx++;
+  }
+  Object.keys(monthStarts).forEach(m=>{
+    const mc = document.createElement('div');
+    mc.className='tl-month-cell';
+    mc.style.width = (monthStarts[m].count*TL_WW)+'px';
+    mc.textContent = MONTHS[m];
+    mrow.appendChild(mc);
+  });
+  hdr.appendChild(mrow); hdr.appendChild(wrow);
+  inn.appendChild(hdr);
+
+  // ── Today line ───────────────────────────────────────────
+  const todayX = tlX(new Date().toISOString().slice(0,10));
+  const todayLine = document.createElement('div');
+  todayLine.className='tl-today';
+  todayLine.style.left = todayX+'px';
+  todayLine.title = 'Idag';
+
+  // ── Rows ─────────────────────────────────────────────────
+  let rowTop = 52; // after header
+  TL_DATA.forEach(group=>{
+    // Group header
+    const gr = document.createElement('div');
+    gr.className='tl-group-row';
+    gr.style.cssText=`width:${TL_TOTAL_W}px;position:absolute;top:${rowTop}px;left:0;display:flex;align-items:center;padding:0 10px;gap:6px`;
+    gr.innerHTML=`<div style="width:7px;height:7px;border-radius:50%;background:${group.color};flex-shrink:0"></div><span style="font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text3)">${group.client}</span>`;
+    inn.appendChild(gr);
+
+    // Sidebar group header
+    const sbg = document.createElement('div');
+    sbg.className='tl-group-hdr';
+    sbg.innerHTML=`<div class="tl-group-dot" style="background:${group.color}"></div>${group.client}`;
+    sb.appendChild(sbg);
+
+    rowTop += 28;
+
+    group.projects.forEach(proj=>{
+      const row = document.createElement('div');
+      row.className='tl-row';
+      row.style.cssText=`width:${TL_TOTAL_W}px;position:absolute;top:${rowTop}px;left:0;`;
+
+      const x1 = tlX(proj.start), x2 = tlX(proj.end);
+      const bw = Math.max(TL_WW/2, x2-x1);
+
+      const bar = document.createElement('div');
+      bar.className='tl-bar' + (proj.retainer?' retainer':'');
+      bar.style.cssText=`left:${x1}px;width:${bw}px;background:${group.color}22;border:1px solid ${group.color}66;`;
+      if(bw>50){
+        bar.innerHTML=`<span class="tl-bar-label" style="color:${group.color}">${proj.name}</span>`;
+      }
+      bar.title=`${proj.name}\n${proj.start} → ${proj.end}`;
+      row.appendChild(bar);
+
+      // Milestones
+      (proj.ms||[]).forEach(ms=>{
+        const mx = tlX(ms.d);
+        const dia = document.createElement('div');
+        dia.className='tl-milestone';
+        dia.style.cssText=`left:${mx-7}px;background:${group.color};border:1.5px solid var(--surface);`;
+        dia.title=`${ms.l} · ${ms.d}`;
+        row.appendChild(dia);
+        const lbl=document.createElement('div');
+        lbl.className='tl-milestone-label';
+        lbl.style.left=(mx)+'px';
+        lbl.textContent=ms.l;
+        row.appendChild(lbl);
       });
-      cell.appendChild(btn);
-      grid.appendChild(cell);
+
+      inn.appendChild(row);
+
+      // Sidebar row
+      const sbr = document.createElement('div');
+      sbr.className='tl-sb-row';
+      sbr.textContent = proj.name;
+      sbr.title = proj.name;
+      sbr.style.height = TL_RH+'px';
+      sb.appendChild(sbr);
+
+      rowTop += TL_RH;
     });
   });
-  updateWeekSummary();
-}
 
-function updateWeekSummary() {
-  let total = 0;
-  PROJECTS.forEach(p => {
-    DAYS.forEach((_, di) => {
-      total += FRACTIONS[allocation[p.id][di]].value;
-    });
+  inn.style.height = (rowTop+40)+'px';
+  inn.appendChild(todayLine);
+  todayLine.style.height = (rowTop+40)+'px';
+  todayLine.style.top = '0';
+
+  // Sync sidebar scroll with timeline scroll
+  const scrl = document.getElementById('tl-scroll');
+  scrl.addEventListener('scroll', ()=>{
+    sb.scrollTop = scrl.scrollTop;
   });
-  const el = document.getElementById('week-summary');
-  const pct = Math.round((total / 5) * 100);
-  el.textContent = `${total.toFixed(1)} / 5.0 dagar allokerade (${pct}%)`;
-  el.style.color = pct > 100 ? 'var(--accent)' : pct >= 80 ? 'var(--green)' : 'var(--text)';
-}
 
-/* ══════════════════════════════════════════════════════
-   LEAVE CALENDAR
-══════════════════════════════════════════════════════ */
-function buildLeaveCalendar() {
-  const cal = document.getElementById('leave-cal');
-  const months = ['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
-  const leaveData = [0,0,15,80,5,0,40,20,0,0,0,0]; // % fill per month
-  months.forEach((m, i) => {
-    const head = document.createElement('div');
-    head.className = 'cal-month';
-    head.textContent = m;
-    cal.appendChild(head);
-  });
-  months.forEach((m, i) => {
-    const bar = document.createElement('div');
-    bar.className = 'cal-bar';
-    if (leaveData[i] > 0) {
-      const fill = document.createElement('div');
-      fill.className = 'fill';
-      fill.style.cssText = `width:${leaveData[i]}%;background:${i===2||i===3?'#d4921a':'rgba(212,146,26,0.4)'}`;
-      bar.appendChild(fill);
-    }
-    cal.appendChild(bar);
-  });
-}
-
-/* ══════════════════════════════════════════════════════
-   CANVAS PAN & ZOOM  —  Figma-identical controls
-   ─────────────────────────────────────────────────────
-   Trackpad two-finger scroll  → pan (x + y)
-   Trackpad pinch              → zoom (arrives as wheel + ctrlKey)
-   Cmd/Ctrl + scroll wheel     → zoom
-   Middle-mouse drag           → pan
-   Space + drag                → pan (temporary hand)
-   H                           → hand tool (permanent)
-   V                           → select tool
-   Cmd/Ctrl +  / =             → zoom in  (Figma step)
-   Cmd/Ctrl −                  → zoom out (Figma step)
-   Cmd/Ctrl 0                  → reset to 100%
-   Cmd/Ctrl Shift H  or  ⇧1   → zoom to fit all
-   ⇧2                          → zoom to selection
-   + / −  (no modifier)        → zoom in / out (step)
-   Z + click                   → zoom in on point
-   Z + Alt + click             → zoom out on point
-══════════════════════════════════════════════════════ */
-const wrap = document.getElementById('canvas-wrap');
-const canvas = document.getElementById('canvas');
-
-let tx = 400, ty = 80;
-let scale = 1;
-const MIN_SCALE = 0.02, MAX_SCALE = 4;
-
-// Figma's exact zoom step levels
-const ZOOM_LEVELS = [0.02,0.05,0.1,0.15,0.25,0.33,0.5,0.67,0.75,1,1.25,1.5,2,3,4];
-
-function snapToLevel(s) { return s; } // free zoom, levels only for +/- keys
-
-function nextZoomLevel(current, dir) {
-  if (dir > 0) {
-    return ZOOM_LEVELS.find(l => l > current + 0.001) || ZOOM_LEVELS[ZOOM_LEVELS.length-1];
-  } else {
-    return [...ZOOM_LEVELS].reverse().find(l => l < current - 0.001) || ZOOM_LEVELS[0];
-  }
-}
-
-function applyTransform() {
-  canvas.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
-  const pct = Math.round(scale * 100);
-  document.getElementById('zoom-display').textContent = pct + '%';
-  updateDotSize();
-  drawMinimap();
-}
-
-function updateDotSize() {
-  const gap = Math.max(6, 24 * scale);
-  document.documentElement.style.setProperty('--dot-gap', gap + 'px');
-  const dotSz = Math.max(0.5, 1.5 * Math.sqrt(scale));
-  document.documentElement.style.setProperty('--dot-size', dotSz + 'px');
-}
-
-// ── Pan state ─────────────────────────────────────────
-let panning = false, panStart = {x:0,y:0}, panOrigin = {x:0,y:0};
-let spaceDown = false;  // Space held → temporary hand
-let currentTool = 'select'; // 'select' | 'hand' | 'zoom'
-
-function isHandActive() { return currentTool === 'hand' || spaceDown; }
-function isZoomActive() { return currentTool === 'zoom'; }
-
-function updateCursor() {
-  if (isHandActive()) {
-    wrap.style.cursor = panning ? 'grabbing' : 'grab';
-  } else if (isZoomActive()) {
-    wrap.style.cursor = 'zoom-in';
-  } else {
-    wrap.style.cursor = '';
-  }
-}
-
-wrap.addEventListener('mousedown', e => {
-  if (e.target.closest('#ctx-menu')) return;
-
-  // Middle mouse → always pan
-  if (e.button === 1) { startPan(e); e.preventDefault(); return; }
-  if (e.button !== 0) return;
-
-  // Zoom tool click
-  if (isZoomActive() && !e.target.closest('.node')) {
-    const rect = wrap.getBoundingClientRect();
-    const pt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    zoomToPoint(e.altKey ? nextZoomLevel(scale, -1) : nextZoomLevel(scale, 1), pt);
-    e.preventDefault(); return;
-  }
-
-  // Hand mode or space → pan (unless clicking a node interactable)
-  if (isHandActive()) {
-    if (!e.target.closest('.fraction-btn')) { startPan(e); return; }
-  }
-
-  // Select tool on empty canvas → pan
-  if (!e.target.closest('.node') && !e.target.closest('.fraction-btn')) {
-    startPan(e);
-  }
-});
-
-function startPan(e) {
-  panning = true;
-  panStart = { x: e.clientX, y: e.clientY };
-  panOrigin = { x: tx, y: ty };
-  wrap.classList.add('grabbing');
-  wrap.style.cursor = 'grabbing';
-  e.preventDefault();
-}
-
-window.addEventListener('mousemove', e => {
-  if (!panning) return;
-  tx = panOrigin.x + (e.clientX - panStart.x);
-  ty = panOrigin.y + (e.clientY - panStart.y);
-  applyTransform();
-});
-
-window.addEventListener('mouseup', e => {
-  if (!panning) return;
-  panning = false;
-  wrap.classList.remove('grabbing');
-  updateCursor();
-});
-
-// ── Wheel / trackpad ──────────────────────────────────
-// Figma rules:
-//   ctrlKey  = pinch gesture OR Ctrl+scroll → ZOOM
-//   metaKey  = Cmd+scroll                   → ZOOM
-//   plain    = two-finger pan               → PAN
-wrap.addEventListener('wheel', e => {
-  e.preventDefault();
-  const rect = wrap.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
-
-  if (e.ctrlKey || e.metaKey) {
-    // ── ZOOM ──────────────────────────────────────────
-    // Normalize delta: trackpad pinch comes in small values, scroll wheel larger
-    let delta = e.deltaY;
-    if (e.deltaMode === 1) delta *= 15; // line mode
-    if (e.deltaMode === 2) delta *= 300; // page mode
-
-    // Figma uses a gentler curve for trackpad
-    const factor = Math.pow(0.998, delta);
-    const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale * factor));
-    const sf = newScale / scale;
-    tx = mx - sf * (mx - tx);
-    ty = my - sf * (my - ty);
-    scale = newScale;
-  } else {
-    // ── PAN ───────────────────────────────────────────
-    let dx = e.deltaX, dy = e.deltaY;
-    if (e.deltaMode === 1) { dx *= 20; dy *= 20; }
-    if (e.deltaMode === 2) { dx *= 400; dy *= 400; }
-    tx -= dx;
-    ty -= dy;
-  }
-  applyTransform();
-}, { passive: false });
-
-// ── Keyboard shortcuts ────────────────────────────────
-window.addEventListener('keydown', e => {
-  const tag = document.activeElement?.tagName;
-  const inInput = tag === 'INPUT' || tag === 'TEXTAREA';
-
-  // Space → temp hand (not in inputs)
-  if (e.code === 'Space' && !inInput) {
-    if (!spaceDown) { spaceDown = true; updateCursor(); }
-    e.preventDefault(); return;
-  }
-
-  if (inInput) return;
-
-  const cmd = e.metaKey || e.ctrlKey;
-
-  // Tool switching
-  if (!cmd && (e.key === 'v' || e.key === 'V')) { activateTool('select'); return; }
-  if (!cmd && (e.key === 'h' || e.key === 'H')) { activateTool('hand');   return; }
-  if (!cmd && (e.key === 'z' || e.key === 'Z')) { activateTool('zoom');   return; }
-
-  // Zoom in/out — Cmd+= / Cmd+- (Figma snaps to levels)
-  if (cmd && (e.key === '=' || e.key === '+')) {
-    zoomToPoint(nextZoomLevel(scale, 1), null); e.preventDefault(); return;
-  }
-  if (cmd && e.key === '-') {
-    zoomToPoint(nextZoomLevel(scale, -1), null); e.preventDefault(); return;
-  }
-
-  // Cmd+0 → 100%
-  if (cmd && e.key === '0') {
-    zoomToPoint(1, null); e.preventDefault(); return;
-  }
-
-  // Cmd+Shift+H or Shift+1 → fit all
-  if ((cmd && e.shiftKey && (e.key === 'h' || e.key === 'H')) ||
-      (e.shiftKey && e.key === '1')) {
-    fitAll(); e.preventDefault(); return;
-  }
-
-  // Shift+2 → zoom to selection
-  if (e.shiftKey && e.key === '2') {
-    fitSelection(); e.preventDefault(); return;
-  }
-
-  // + / - without cmd → step zoom (centered)
-  if (!cmd && e.key === '+') { zoomToPoint(nextZoomLevel(scale, 1),  null); return; }
-  if (!cmd && e.key === '-') { zoomToPoint(nextZoomLevel(scale, -1), null); return; }
-});
-
-window.addEventListener('keyup', e => {
-  if (e.code === 'Space') { spaceDown = false; updateCursor(); }
-});
-
-// ── Zoom helpers ──────────────────────────────────────
-function zoomToPoint(newScale, point) {
-  newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, newScale));
-  const rect = wrap.getBoundingClientRect();
-  const mx = point ? point.x : rect.width  / 2;
-  const my = point ? point.y : rect.height / 2;
-  const sf = newScale / scale;
-  tx = mx - sf * (mx - tx);
-  ty = my - sf * (my - ty);
-  scale = newScale;
-  applyTransform();
-}
-
-function zoomBy(factor, point) {
-  zoomToPoint(scale * factor, point);
-}
-
-function fitAll() {
-  const nodes = document.querySelectorAll('.node');
-  if (!nodes.length) return;
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  nodes.forEach(n => {
-    const x = parseFloat(n.style.left), y = parseFloat(n.style.top);
-    const w = n.offsetWidth, h = n.offsetHeight;
-    if (x < minX) minX = x; if (y < minY) minY = y;
-    if (x+w > maxX) maxX = x+w; if (y+h > maxY) maxY = y+h;
-  });
-  const rect = wrap.getBoundingClientRect();
-  const pad = 80;
-  const s = Math.min(MAX_SCALE, Math.max(MIN_SCALE,
-    Math.min((rect.width-pad*2)/(maxX-minX), (rect.height-pad*2)/(maxY-minY))));
-  scale = s;
-  tx = rect.width/2  - ((minX+maxX)/2) * s;
-  ty = rect.height/2 - ((minY+maxY)/2) * s;
-  applyTransform();
-}
-
-function fitView() { fitAll(); } // alias used elsewhere
-
-function fitSelection() {
-  if (!selectedNode) { fitAll(); return; }
-  const n = selectedNode;
-  const x = parseFloat(n.style.left), y = parseFloat(n.style.top);
-  const w = n.offsetWidth, h = n.offsetHeight;
-  const rect = wrap.getBoundingClientRect();
-  const pad = 120;
-  const s = Math.min(MAX_SCALE, Math.max(MIN_SCALE,
-    Math.min((rect.width-pad*2)/w, (rect.height-pad*2)/h)));
-  scale = s;
-  tx = rect.width/2  - (x + w/2) * s;
-  ty = rect.height/2 - (y + h/2) * s;
-  applyTransform();
-}
-
-/* ══════════════════════════════════════════════════════
-   NODE DRAGGING
-══════════════════════════════════════════════════════ */
-let draggingNode = null, dragOffset = {x:0,y:0};
-let selectedNode = null;
-
-document.querySelectorAll('.node-header').forEach(hdr => {
-  hdr.addEventListener('mousedown', e => {
-    if (e.button !== 0) return;
-    const node = document.getElementById(hdr.dataset.nodeId);
-    if (!node) return;
-    selectNode(node);
-    draggingNode = node;
-    const rect = node.getBoundingClientRect();
-    // Account for canvas transform
-    dragOffset = {
-      x: (e.clientX - rect.left) / scale,
-      y: (e.clientY - rect.top) / scale,
-    };
-    wrap.classList.add('node-dragging');
-    e.stopPropagation();
-    e.preventDefault();
-  });
-});
-
-window.addEventListener('mousemove', e => {
-  if (!draggingNode) return;
-  const wrapRect = wrap.getBoundingClientRect();
-  const x = (e.clientX - wrapRect.left - tx) / scale - dragOffset.x;
-  const y = (e.clientY - wrapRect.top  - ty) / scale - dragOffset.y;
-  draggingNode.style.left = Math.max(0, x) + 'px';
-  draggingNode.style.top  = Math.max(0, y) + 'px';
-  drawConnections();
-  drawMinimap();
-});
-
-window.addEventListener('mouseup', () => {
-  draggingNode = null;
-  wrap.classList.remove('node-dragging');
-});
-
-function selectNode(node) {
-  if (selectedNode) selectedNode.classList.remove('selected');
-  selectedNode = node;
-  node.classList.add('selected');
-}
-
-// Deselect on canvas click
-wrap.addEventListener('click', e => {
-  if (!e.target.closest('.node')) {
-    if (selectedNode) { selectedNode.classList.remove('selected'); selectedNode = null; }
-  }
-});
-
-/* ══════════════════════════════════════════════════════
-   CONNECTION LINES
-══════════════════════════════════════════════════════ */
-const CONNECTIONS = [
-  { from: 'node-week', to: 'node-projects' },
-  { from: 'node-week', to: 'node-resources' },
-  { from: 'node-projects', to: 'node-resources' },
-  { from: 'node-resources', to: 'node-leave' },
-];
-
-function getNodeCenter(node) {
-  return {
-    x: parseInt(node.style.left) + node.offsetWidth / 2,
-    y: parseInt(node.style.top) + node.offsetHeight / 2,
+  // Today button
+  document.getElementById('tl-today-btn').onclick = ()=>{
+    const x = tlX(new Date().toISOString().slice(0,10));
+    scrl.scrollLeft = Math.max(0, x - scrl.clientWidth/2);
   };
 }
 
-function getNodePort(node, dir) {
-  const l = parseInt(node.style.left), t = parseInt(node.style.top);
-  const w = node.offsetWidth, h = node.offsetHeight;
-  switch(dir) {
-    case 'right':  return { x: l + w, y: t + h/2 };
-    case 'left':   return { x: l,     y: t + h/2 };
-    case 'bottom': return { x: l + w/2, y: t + h };
-    case 'top':    return { x: l + w/2, y: t };
+/* ═══════════════════════════════════════════════════════════
+   WEEK GRID
+═══════════════════════════════════════════════════════════ */
+function buildWeekGrid(){
+  const g = document.getElementById('week-grid');
+  [...g.querySelectorAll('.wr')].forEach(r=>r.remove());
+  // Headers (static, already not there → add once)
+  if(!g.querySelector('.wg-head')){
+    ['Projekt','MÅN','TIS','ONS','TOR','FRE'].forEach(t=>{
+      const d=document.createElement('div');d.className='wg-head';d.textContent=t;g.appendChild(d);
+    });
   }
+  PROJECTS.forEach(proj=>{
+    const lbl=document.createElement('div');
+    lbl.className='wg-label wr';
+    lbl.innerHTML=`<div class="dot" style="background:${proj.color}"></div><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${proj.name}</span>`;
+    g.appendChild(lbl);
+    DAYS.forEach((_,di)=>{
+      const cell=document.createElement('div');cell.className='wg-cell wr';
+      const btn=document.createElement('button');btn.className='frac-btn';
+      const fi=alloc[proj.id][di];
+      const f=FRACS[fi];
+      btn.textContent=f.label;
+      if(f.val>=1)btn.classList.add('f1');
+      else if(f.val>=.5)btn.classList.add('fh');
+      else if(f.val>.1)btn.classList.add('fq');
+      btn.title=`${proj.name} ${DAYS[di]}: ${Math.round(f.val*100)}%`;
+      btn.addEventListener('click',()=>{alloc[proj.id][di]=(alloc[proj.id][di]+1)%FRACS.length;buildWeekGrid();});
+      cell.appendChild(btn);g.appendChild(cell);
+    });
+  });
+  // Summary
+  let tot=0;
+  PROJECTS.forEach(p=>DAYS.forEach((_,di)=>tot+=FRACS[alloc[p.id][di]].val));
+  const el=document.getElementById('week-sum');
+  const pct=Math.round(tot/5*100);
+  el.textContent=`${tot.toFixed(1)} / 5.0 dagar (${pct}%)`;
+  el.style.color=pct>100?'var(--accent)':pct>=80?'var(--green)':'var(--text)';
 }
 
-function drawConnections() {
-  const svg = document.getElementById('connections-svg');
-  svg.innerHTML = '';
-  CONNECTIONS.forEach(conn => {
-    const fromNode = document.getElementById(conn.from);
-    const toNode   = document.getElementById(conn.to);
-    if (!fromNode || !toNode) return;
-    const a = getNodePort(fromNode, 'right');
-    const b = getNodePort(toNode, 'left');
-    // If b is to the left of a, use bottom-top
-    const ax = a.x, ay = a.y, bx = b.x, by = b.y;
-    const cx1 = ax + Math.abs(bx-ax)*0.5, cy1 = ay;
-    const cx2 = bx - Math.abs(bx-ax)*0.5, cy2 = by;
-    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
-    path.setAttribute('d', `M${ax},${ay} C${cx1},${cy1} ${cx2},${cy2} ${bx},${by}`);
-    path.setAttribute('class','conn-line');
+/* ═══════════════════════════════════════════════════════════
+   LEAVE CALENDAR
+═══════════════════════════════════════════════════════════ */
+function buildLeave(){
+  const cal=document.getElementById('leave-cal');
+  const months=['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
+  const data=[0,0,15,80,5,0,40,20,0,0,0,0];
+  months.forEach(m=>{const d=document.createElement('div');d.className='cal-month';d.textContent=m;cal.appendChild(d);});
+  months.forEach((_,i)=>{
+    const b=document.createElement('div');b.className='cal-bar';
+    if(data[i]>0){const f=document.createElement('div');f.className='fill';
+      f.style.cssText=`width:${data[i]}%;background:${i===2||i===3?'#d4921a':'rgba(212,146,26,.4)'}`;b.appendChild(f);}
+    cal.appendChild(b);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DASHBOARD CLOCK + SPARKLINE
+═══════════════════════════════════════════════════════════ */
+function updateClock(){
+  const now=new Date();
+  document.getElementById('clock-display').textContent=
+    now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  const days=['Söndag','Måndag','Tisdag','Onsdag','Torsdag','Fredag','Lördag'];
+  const months=['Januari','Februari','Mars','April','Maj','Juni','Juli','Augusti','September','Oktober','November','December'];
+  document.getElementById('date-display').textContent=
+    `${days[now.getDay()]} ${now.getDate()} ${months[now.getMonth()]}`;
+}
+setInterval(updateClock,1000);
+
+function buildSparkline(){
+  const svg=document.getElementById('sparkline-svg');
+  const pts=[18,32,24,38,52,44,58,62,48,70,66,78,72,68,80];
+  const W=320,H=50,n=pts.length;
+  const xs=pts.map((_,i)=>Math.round(i/(n-1)*W));
+  const ys=pts.map(v=>Math.round(H-v/100*H*0.85));
+  let d=`M${xs[0]},${ys[0]}`;
+  for(let i=1;i<n;i++){
+    const cpx=(xs[i]+xs[i-1])/2;
+    d+=` C${cpx},${ys[i-1]} ${cpx},${ys[i]} ${xs[i]},${ys[i]}`;
+  }
+  svg.innerHTML=`<path d="${d}" fill="none" stroke="#e8e8f0" stroke-width="1.5" stroke-linecap="round"/>`;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   KANBAN
+═══════════════════════════════════════════════════════════ */
+function buildKanban(){
+  const wrap=document.getElementById('kanban-wrap');
+  KANBAN_DATA.forEach(col=>{
+    const board=document.createElement('div');board.className='kboard';
+    board.innerHTML=`<div class="kboard-hdr"><div style="width:6px;height:6px;border-radius:50%;background:${col.color};flex-shrink:0"></div>${col.col}<span class="kboard-count">${col.items.length}</span></div>`;
+    col.items.forEach(item=>{
+      const card=document.createElement('div');card.className='kcard';
+      card.innerHTML=`<div class="kcard-name">${item.name}</div><div class="kcard-val">${item.val}</div>
+        <div class="kcard-meta"><div class="kcard-dot" style="background:${col.color}"></div><span style="font-size:10px;color:var(--text3)">${item.tag}</span></div>`;
+      board.appendChild(card);
+    });
+    wrap.appendChild(board);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SNABBKALKYL
+═══════════════════════════════════════════════════════════ */
+function calcUpdate(){
+  const weeks=parseFloat(document.getElementById('ck-weeks').value)||0;
+  const ppl=parseFloat(document.getElementById('ck-ppl').value)||0;
+  const hrs=parseFloat(document.getElementById('ck-hrs').value)||0;
+  const rate=parseFloat(document.getElementById('ck-rate').value)||0;
+  const totalHrs=weeks*5*ppl*hrs;
+  const total=totalHrs*rate;
+  document.getElementById('ck-total').textContent=total.toLocaleString('sv-SE')+ ' kr';
+  document.getElementById('ck-detail').textContent=`${totalHrs} tim · ${weeks} v · ${ppl} pers`;
+}
+['ck-weeks','ck-ppl','ck-hrs','ck-rate'].forEach(id=>{
+  document.getElementById(id)?.addEventListener('input',calcUpdate);
+});
+document.getElementById('ck-copy')?.addEventListener('click',()=>{
+  const name=document.getElementById('ck-name').value||'Projekt';
+  const detail=document.getElementById('ck-detail').textContent;
+  const total=document.getElementById('ck-total').textContent;
+  navigator.clipboard?.writeText(`${name}: ${total} (${detail})`);
+  const btn=document.getElementById('ck-copy');
+  const orig=btn.textContent;btn.textContent='✓ Kopierat!';
+  setTimeout(()=>btn.textContent=orig,1500);
+});
+
+/* ═══════════════════════════════════════════════════════════
+   AI ASSISTANT
+═══════════════════════════════════════════════════════════ */
+function aiSend(){
+  const inp=document.getElementById('ai-input');
+  const msg=inp.value.trim();
+  if(!msg)return;
+  inp.value='';
+  const msgs=document.getElementById('ai-msgs');
+  const um=document.createElement('div');um.className='ai-msg user';um.textContent=msg;
+  msgs.appendChild(um);
+  setTimeout(()=>{
+    const am=document.createElement('div');am.className='ai-msg ai';
+    am.innerHTML=`<span class="ai-tag">Jung AI</span>${AI_RESPONSES[Math.floor(Math.random()*AI_RESPONSES.length)]}`;
+    msgs.appendChild(am);
+    msgs.scrollTop=msgs.scrollHeight;
+  },600);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+document.getElementById('ai-send')?.addEventListener('click',aiSend);
+document.getElementById('ai-input')?.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();aiSend();}
+});
+
+/* ═══════════════════════════════════════════════════════════
+   NODE CONTROLS  (collapse / snap / fullscreen)
+═══════════════════════════════════════════════════════════ */
+const fsBackdrop=document.getElementById('fs-backdrop');
+Object.assign(fsBackdrop.style,{
+  position:'fixed',inset:'0',background:'rgba(0,0,0,.65)',
+  backdropFilter:'blur(3px)',zIndex:'799',display:'none',
+});
+let fsNode=null;
+
+function enterFullscreen(node){
+  if(fsNode)exitFullscreen();
+  fsNode=node;
+  node._fsParent=node.parentNode;
+  node._fsNext=node.nextSibling;
+  node._fsSt={left:node.style.left,top:node.style.top,
+               width:node.style.width,height:node.style.height,
+               position:node.style.position,zIndex:node.style.zIndex};
+  document.body.appendChild(node);
+  Object.assign(node.style,{position:'fixed',left:'20px',top:'56px',
+    width:'calc(100vw - 40px)',height:'calc(100vh - 72px)',zIndex:'800'});
+  node.classList.add('is-fullscreen');
+  fsBackdrop.style.display='block';
+  node.querySelector('[data-action="fullscreen"]')?.classList.add('active');
+}
+function exitFullscreen(){
+  if(!fsNode)return;
+  const node=fsNode;fsNode=null;
+  if(node._fsNext)node._fsParent.insertBefore(node,node._fsNext);
+  else node._fsParent.appendChild(node);
+  Object.assign(node.style,node._fsSt);
+  node.classList.remove('is-fullscreen');
+  fsBackdrop.style.display='none';
+  node.querySelector('[data-action="fullscreen"]')?.classList.remove('active');
+}
+fsBackdrop.addEventListener('click',exitFullscreen);
+window.addEventListener('keydown',e=>{if(e.key==='Escape')exitFullscreen();});
+
+function snapNode(node){
+  const rect=wrap.getBoundingClientRect();
+  const pad=20;
+  const side=node._snapSide||'left';
+  const halfW=(rect.width/2-pad*1.5)/scale;
+  const h=(rect.height-pad*2)/scale;
+  const topY=(-ty/scale)+pad/scale;
+
+  if(side==='left'){
+    const leftX=(-tx/scale)+pad/scale;
+    node.style.left=leftX+'px';node.style.top=topY+'px';
+    node.style.width=halfW+'px';node.style.height=h+'px';
+    node._snapSide='right';
+  } else {
+    const rightX=(-tx/scale)+(rect.width/2+pad/2)/scale;
+    node.style.left=rightX+'px';node.style.top=topY+'px';
+    node.style.width=halfW+'px';node.style.height=h+'px';
+    node._snapSide='left';
+  }
+  // make body fill
+  const body=node.querySelector('.node-body');
+  if(body){body.style.height='calc(100% - 46px)';body.style.overflow='auto';}
+}
+
+// Wire up all node action buttons
+document.querySelectorAll('.na-btn').forEach(btn=>{
+  btn.addEventListener('mousedown',e=>e.stopPropagation());
+  btn.addEventListener('click',e=>{
+    e.stopPropagation();
+    const node=btn.closest('.node');
+    const action=btn.dataset.action;
+    if(action==='collapse'){
+      node.classList.toggle('is-collapsed');
+      btn.style.opacity=node.classList.contains('is-collapsed')?'1':'';
+    }
+    if(action==='fullscreen'){
+      if(node.classList.contains('is-fullscreen'))exitFullscreen();
+      else enterFullscreen(node);
+    }
+    if(action==='snap') snapNode(node);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   CANVAS PAN & ZOOM  —  Figma controls
+═══════════════════════════════════════════════════════════ */
+const wrap=document.getElementById('canvas-wrap');
+const canvas=document.getElementById('canvas');
+let tx=300,ty=60,scale=1;
+const MIN_S=.05,MAX_S=4;
+const ZOOM_STEPS=[.05,.1,.15,.25,.33,.5,.67,.75,1,1.25,1.5,2,3,4];
+
+function nextStep(s,dir){
+  if(dir>0)return ZOOM_STEPS.find(l=>l>s+.001)||ZOOM_STEPS[ZOOM_STEPS.length-1];
+  return[...ZOOM_STEPS].reverse().find(l=>l<s-.001)||ZOOM_STEPS[0];
+}
+function applyT(){
+  canvas.style.transform=`translate(${tx}px,${ty}px) scale(${scale})`;
+  document.getElementById('zoom-display').textContent=Math.round(scale*100)+'%';
+  const gap=Math.max(6,24*scale);
+  const dot=Math.max(.5,1.5*Math.sqrt(scale));
+  document.documentElement.style.setProperty('--dot-gap',gap+'px');
+  document.documentElement.style.setProperty('--dot-size',dot+'px');
+  drawMinimap();
+}
+function zoomTo(ns,pt){
+  ns=Math.min(MAX_S,Math.max(MIN_S,ns));
+  const r=wrap.getBoundingClientRect();
+  const mx=pt?pt.x:r.width/2, my=pt?pt.y:r.height/2;
+  const sf=ns/scale;
+  tx=mx-sf*(mx-tx); ty=my-sf*(my-ty); scale=ns; applyT();
+}
+
+let panning=false,panStart={x:0,y:0},panOrigin={x:0,y:0};
+let spaceDown=false,currentTool='select';
+function isHand(){return currentTool==='hand'||spaceDown;}
+
+function startPan(e){
+  panning=true;panStart={x:e.clientX,y:e.clientY};panOrigin={x:tx,y:ty};
+  wrap.classList.add('is-grabbing');e.preventDefault();
+}
+
+wrap.addEventListener('mousedown',e=>{
+  if(e.target.closest('#ctx-menu,.na-btn,.frac-btn,.calc-input,.calc-btn,.ai-input,.ai-send,.tb-btn,.kcard,.frac-btn')) return;
+  if(e.button===1){startPan(e);return;}
+  if(e.button!==0)return;
+  if(currentTool==='zoom'&&!e.target.closest('.node')){
+    zoomTo(nextStep(scale,e.altKey?-1:1),{x:e.clientX-wrap.getBoundingClientRect().left,y:e.clientY-wrap.getBoundingClientRect().top});
+    e.preventDefault();return;
+  }
+  if(isHand()){if(!e.target.closest('.frac-btn,.calc-input,.ai-input')){startPan(e);}return;}
+  if(!e.target.closest('.node'))startPan(e);
+});
+
+window.addEventListener('mousemove',e=>{
+  if(!panning&&!draggingNode)return;
+  if(panning){tx=panOrigin.x+(e.clientX-panStart.x);ty=panOrigin.y+(e.clientY-panStart.y);applyT();}
+  if(draggingNode){
+    const r=wrap.getBoundingClientRect();
+    draggingNode.style.left=Math.max(0,(e.clientX-r.left-tx)/scale-dragOff.x)+'px';
+    draggingNode.style.top=Math.max(0,(e.clientY-r.top-ty)/scale-dragOff.y)+'px';
+    drawConnections();drawMinimap();
+  }
+});
+window.addEventListener('mouseup',()=>{
+  panning=false;draggingNode=null;
+  wrap.classList.remove('is-grabbing');
+  wrap.style.cursor='';
+});
+
+wrap.addEventListener('wheel',e=>{
+  e.preventDefault();
+  const r=wrap.getBoundingClientRect();
+  const mx=e.clientX-r.left,my=e.clientY-r.top;
+  if(e.ctrlKey||e.metaKey){
+    let d=e.deltaY;
+    if(e.deltaMode===1)d*=15;if(e.deltaMode===2)d*=300;
+    zoomTo(scale*Math.pow(.998,d),{x:mx,y:my});
+  } else {
+    let dx=e.deltaX,dy=e.deltaY;
+    if(e.deltaMode===1){dx*=20;dy*=20;}
+    if(e.deltaMode===2){dx*=400;dy*=400;}
+    tx-=dx;ty-=dy;applyT();
+  }
+},{passive:false});
+
+window.addEventListener('keydown',e=>{
+  const inI=['INPUT','TEXTAREA'].includes(document.activeElement?.tagName);
+  if(e.code==='Space'&&!inI){if(!spaceDown){spaceDown=true;wrap.style.cursor='grab';}e.preventDefault();return;}
+  if(inI)return;
+  const cmd=e.metaKey||e.ctrlKey;
+  if(!cmd&&(e.key==='v'||e.key==='V')){activateTool('select');return;}
+  if(!cmd&&(e.key==='h'||e.key==='H')){activateTool('hand');return;}
+  if(!cmd&&(e.key==='z'||e.key==='Z')){activateTool('zoom');return;}
+  if(cmd&&(e.key==='='||e.key==='+')){zoomTo(nextStep(scale,1),null);e.preventDefault();}
+  if(cmd&&e.key==='-'){zoomTo(nextStep(scale,-1),null);e.preventDefault();}
+  if(cmd&&e.key==='0'){zoomTo(1,null);e.preventDefault();}
+  if((cmd&&e.shiftKey&&(e.key==='h'||e.key==='H'))||(e.shiftKey&&e.key==='1')){fitAll();e.preventDefault();}
+  if(e.shiftKey&&e.key==='2'){fitSel();e.preventDefault();}
+  if(!cmd&&e.key==='+')zoomTo(nextStep(scale,1),null);
+  if(!cmd&&e.key==='-')zoomTo(nextStep(scale,-1),null);
+});
+window.addEventListener('keyup',e=>{if(e.code==='Space'){spaceDown=false;wrap.style.cursor='';}});
+
+function fitAll(){
+  const nodes=document.querySelectorAll('#canvas .node');
+  if(!nodes.length)return;
+  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  nodes.forEach(n=>{
+    const x=parseFloat(n.style.left)||0,y=parseFloat(n.style.top)||0;
+    const w=n.offsetWidth,h=n.offsetHeight;
+    x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x+w);y1=Math.max(y1,y+h);
+  });
+  const r=wrap.getBoundingClientRect();
+  const pad=70;
+  scale=Math.min(MAX_S,Math.max(MIN_S,Math.min((r.width-pad*2)/(x1-x0),(r.height-pad*2)/(y1-y0))));
+  tx=r.width/2-((x0+x1)/2)*scale;ty=r.height/2-((y0+y1)/2)*scale;applyT();
+}
+function fitView(){fitAll();}
+
+function fitSel(){
+  if(!selectedNode){fitAll();return;}
+  const n=selectedNode;
+  const x=parseFloat(n.style.left),y=parseFloat(n.style.top);
+  const w=n.offsetWidth,h=n.offsetHeight;
+  const r=wrap.getBoundingClientRect();
+  const pad=100;
+  scale=Math.min(MAX_S,Math.max(MIN_S,Math.min((r.width-pad*2)/w,(r.height-pad*2)/h)));
+  tx=r.width/2-(x+w/2)*scale;ty=r.height/2-(y+h/2)*scale;applyT();
+}
+
+function activateTool(t){
+  currentTool=t;
+  document.getElementById('btn-v').classList.toggle('active',t==='select');
+  document.getElementById('btn-h').classList.toggle('active',t==='hand');
+  document.getElementById('btn-z').classList.toggle('active',t==='zoom');
+  wrap.style.cursor=t==='hand'?'grab':t==='zoom'?'zoom-in':'';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   NODE DRAGGING
+═══════════════════════════════════════════════════════════ */
+let draggingNode=null,dragOff={x:0,y:0},selectedNode=null;
+
+function selectNode(n){
+  if(selectedNode)selectedNode.classList.remove('selected');
+  selectedNode=n;if(n)n.classList.add('selected');
+}
+wrap.addEventListener('click',e=>{if(!e.target.closest('.node'))selectNode(null);});
+
+document.querySelectorAll('.node-header[data-nid]').forEach(hdr=>{
+  hdr.addEventListener('mousedown',e=>{
+    if(e.button!==0||e.target.closest('.na-btn,.tb-btn'))return;
+    const node=document.getElementById(hdr.dataset.nid);
+    if(!node||node.classList.contains('is-fullscreen'))return;
+    selectNode(node);draggingNode=node;
+    const r=node.getBoundingClientRect();
+    dragOff={x:(e.clientX-r.left)/scale,y:(e.clientY-r.top)/scale};
+    e.stopPropagation();e.preventDefault();
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   CONNECTION LINES
+═══════════════════════════════════════════════════════════ */
+const CONNS=[
+  {from:'nd',to:'ntl'},{from:'nd',to:'nwk'},
+  {from:'ntl',to:'nrs'},{from:'nwk',to:'nrs'},
+  {from:'nrs',to:'nlv'},{from:'nrs',to:'nnb'},
+];
+function nodePort(n,side){
+  const l=parseFloat(n.style.left),t=parseFloat(n.style.top);
+  const w=n.offsetWidth,h=n.offsetHeight;
+  if(side==='r')return{x:l+w,y:t+h/2};
+  if(side==='l')return{x:l,y:t+h/2};
+  if(side==='b')return{x:l+w/2,y:t+h};
+  return{x:l+w/2,y:t};
+}
+function drawConnections(){
+  const svg=document.getElementById('connections-svg');
+  svg.innerHTML='';
+  CONNS.forEach(c=>{
+    const a=document.getElementById(c.from),b=document.getElementById(c.to);
+    if(!a||!b||a.classList.contains('is-fullscreen')||b.classList.contains('is-fullscreen'))return;
+    const p1=nodePort(a,'r'),p2=nodePort(b,'l');
+    const dx=Math.abs(p2.x-p1.x)*.5;
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d',`M${p1.x},${p1.y} C${p1.x+dx},${p1.y} ${p2.x-dx},${p2.y} ${p2.x},${p2.y}`);
+    path.setAttribute('class','conn-path');
     svg.appendChild(path);
   });
 }
 
-/* ══════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════
    MINIMAP
-══════════════════════════════════════════════════════ */
-function drawMinimap() {
-  const mm = document.getElementById('mm');
-  const ctx = mm.getContext('2d');
-  const W = mm.width, H = mm.height;
+═══════════════════════════════════════════════════════════ */
+function drawMinimap(){
+  const mm=document.getElementById('mm');
+  const ctx=mm.getContext('2d');
+  const W=mm.width,H=mm.height;
   ctx.clearRect(0,0,W,H);
-
-  // Background
-  ctx.fillStyle = '#111113';
-  ctx.fillRect(0,0,W,H);
-
-  // World bounds
-  const worldW = 8000, worldH = 6000;
-  const scaleX = W / worldW, scaleY = H / worldH;
-
-  // Draw nodes
-  document.querySelectorAll('.node').forEach(n => {
-    const x = parseInt(n.style.left) * scaleX;
-    const y = parseInt(n.style.top)  * scaleY;
-    const w = n.offsetWidth  * scaleX;
-    const h = n.offsetHeight * scaleY;
-    ctx.fillStyle = '#2e2e38';
-    ctx.beginPath();
-    ctx.roundRect(x, y, w, h, 2);
-    ctx.fill();
+  ctx.fillStyle='#111113';ctx.fillRect(0,0,W,H);
+  const WW=8000,WH=6000,sx=W/WW,sy=H/WH;
+  document.querySelectorAll('#canvas .node').forEach(n=>{
+    const x=parseFloat(n.style.left)*sx,y=parseFloat(n.style.top)*sy;
+    const w=n.offsetWidth*sx,h=n.offsetHeight*sy;
+    ctx.fillStyle='#2e2e38';
+    ctx.beginPath();ctx.roundRect(x,y,Math.max(2,w),Math.max(1,h),1);ctx.fill();
   });
-
-  // Viewport indicator
-  const wrapRect = wrap.getBoundingClientRect();
-  const vx = (-tx / scale) * scaleX;
-  const vy = (-ty / scale) * scaleY;
-  const vw = (wrapRect.width  / scale) * scaleX;
-  const vh = (wrapRect.height / scale) * scaleY;
-  ctx.strokeStyle = 'rgba(58,123,213,0.8)';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(vx, vy, vw, vh);
+  const r=wrap.getBoundingClientRect();
+  const vx=(-tx/scale)*sx,vy=(-ty/scale)*sy;
+  const vw=(r.width/scale)*sx,vh=(r.height/scale)*sy;
+  ctx.strokeStyle='rgba(58,123,213,.8)';ctx.lineWidth=1;
+  ctx.strokeRect(vx,vy,vw,vh);
 }
 
-/* ══════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════
    CONTEXT MENU
-══════════════════════════════════════════════════════ */
-let ctxPos = {x:0,y:0};
-const ctxMenu = document.getElementById('ctx-menu');
-
-wrap.addEventListener('contextmenu', e => {
+═══════════════════════════════════════════════════════════ */
+let ctxPos={x:0,y:0};
+const ctxMenu=document.getElementById('ctx-menu');
+wrap.addEventListener('contextmenu',e=>{
+  if(e.target.closest('.node'))return;
   e.preventDefault();
-  ctxPos = { x: (e.clientX - tx) / scale, y: (e.clientY - ty) / scale };
-  ctxMenu.style.left = e.clientX + 'px';
-  ctxMenu.style.top  = e.clientY + 'px';
-  ctxMenu.style.display = 'block';
+  ctxPos={x:(e.clientX-tx)/scale,y:(e.clientY-ty)/scale};
+  ctxMenu.style.cssText=`display:block;left:${e.clientX}px;top:${e.clientY}px`;
 });
-window.addEventListener('click', () => { ctxMenu.style.display = 'none'; });
+window.addEventListener('click',()=>ctxMenu.style.display='none');
+document.getElementById('ctx-fit').addEventListener('click',fitAll);
+document.getElementById('ctx-zi').addEventListener('click',()=>zoomTo(nextStep(scale,1),null));
+document.getElementById('ctx-zo').addEventListener('click',()=>zoomTo(nextStep(scale,-1),null));
 
-document.getElementById('ctx-fit').addEventListener('click', fitView);
-document.getElementById('ctx-zoom-in').addEventListener('click', () => zoomBy(1.25, null));
-document.getElementById('ctx-zoom-out').addEventListener('click', () => zoomBy(0.8, null));
-
-let nodeCounter = 10;
-function addNewNode(type) {
-  const id = 'node-dyn-' + (++nodeCounter);
-  const node = document.createElement('div');
-  node.id = id;
-  node.className = 'node';
-  node.style.left = ctxPos.x + 'px';
-  node.style.top  = ctxPos.y + 'px';
-  node.style.width = '320px';
-
-  let icon='📋', title='Ny nod', subtitle='Klicka för att redigera';
-  if (type==='week')  { icon='📅'; title='Veckovy'; subtitle='Ny period'; node.classList.add('week-node'); }
-  if (type==='res')   { icon='👥'; title='Resurser'; subtitle='Tom lista'; node.classList.add('resource-node'); }
-
-  node.innerHTML = `
-    <div class="node-header" data-node-id="${id}">
-      <div class="node-icon">${icon}</div>
-      <div><div class="node-title">${title}</div><div class="node-subtitle">${subtitle}</div></div>
+let dynCount=20;
+function addNode(type){
+  const id='nd-'+(++dynCount);
+  const el=document.createElement('div');
+  el.id=id;el.className='node';
+  el.style.cssText=`left:${ctxPos.x}px;top:${ctxPos.y}px;width:320px`;
+  const icons={week:'📅',calc:'🧮',ai:'✦'};
+  const titles={week:'Veckovy',calc:'Snabbkalkyl',ai:'AI-assistent'};
+  el.innerHTML=`
+    <div class="node-header" data-nid="${id}">
+      <div class="node-icon">${icons[type]||'📋'}</div>
+      <div class="node-meta"><div class="node-title">${titles[type]||'Nod'}</div><div class="node-subtitle">Ny nod</div></div>
+      <div class="node-actions">
+        <button class="na-btn" data-action="collapse"><svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1l3.5 4L8 1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+        <button class="na-btn" data-action="snap"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x=".5" y=".5" width="4" height="9" rx="1" stroke="currentColor"/><rect x="5.5" y=".5" width="4" height="9" rx="1" stroke="currentColor"/></svg></button>
+        <button class="na-btn" data-action="fullscreen"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 4V1h3M6 1h3v3M9 6v3H6M4 9H1V6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></button>
+      </div>
     </div>
-    <div class="node-body" style="color:var(--text3);font-size:12px;text-align:center;padding:24px 14px">
-      Tom nod · dra för att flytta
-    </div>`;
-
-  canvas.appendChild(node);
-  node.querySelector('.node-header').addEventListener('mousedown', e => {
-    if (e.button !== 0) return;
-    selectNode(node);
-    draggingNode = node;
-    const rect = node.getBoundingClientRect();
-    dragOffset = { x: (e.clientX - rect.left)/scale, y: (e.clientY - rect.top)/scale };
-    wrap.classList.add('node-dragging');
-    e.stopPropagation(); e.preventDefault();
+    <div class="node-body" style="color:var(--text3);text-align:center;padding:24px">Tom nod</div>`;
+  canvas.appendChild(el);
+  el.querySelectorAll('.na-btn').forEach(btn=>{
+    btn.addEventListener('mousedown',e=>e.stopPropagation());
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const action=btn.dataset.action;
+      if(action==='collapse')el.classList.toggle('is-collapsed');
+      if(action==='fullscreen'){if(el.classList.contains('is-fullscreen'))exitFullscreen();else enterFullscreen(el);}
+      if(action==='snap')snapNode(el);
+    });
   });
-  selectNode(node);
-  drawMinimap();
+  el.querySelector('.node-header').addEventListener('mousedown',e=>{
+    if(e.button!==0||e.target.closest('.na-btn'))return;
+    selectNode(el);draggingNode=el;
+    const r=el.getBoundingClientRect();
+    dragOff={x:(e.clientX-r.left)/scale,y:(e.clientY-r.top)/scale};
+    e.stopPropagation();e.preventDefault();
+  });
+  selectNode(el);
 }
-
-document.getElementById('ctx-new-week').addEventListener('click', () => addNewNode('week'));
-document.getElementById('ctx-new-proj').addEventListener('click', () => addNewNode('proj'));
-document.getElementById('ctx-new-res').addEventListener('click',  () => addNewNode('res'));
-document.getElementById('btn-new-node').addEventListener('click', () => {
-  ctxPos = { x: (-tx/scale) + 400, y: (-ty/scale) + 200 };
-  addNewNode('proj');
+document.getElementById('ctx-week').addEventListener('click',()=>addNode('week'));
+document.getElementById('ctx-calc').addEventListener('click',()=>addNode('calc'));
+document.getElementById('ctx-ai').addEventListener('click',()=>addNode('ai'));
+document.getElementById('btn-add').addEventListener('click',()=>{
+  ctxPos={x:(-tx/scale)+200,y:(-ty/scale)+200};addNode('week');
 });
 
-/* ══════════════════════════════════════════════════════
-   TOOLBAR ACTIONS
-══════════════════════════════════════════════════════ */
-function activateTool(tool) {
-  currentTool = tool;
-  document.getElementById('btn-select').classList.toggle('active', tool==='select');
-  document.getElementById('btn-hand').classList.toggle('active',   tool==='hand');
-  document.getElementById('btn-zoom').classList.toggle('active',   tool==='zoom');
-  updateCursor();
-}
+/* ═══════════════════════════════════════════════════════════
+   TOOLBAR
+═══════════════════════════════════════════════════════════ */
+document.getElementById('btn-v').addEventListener('click',()=>activateTool('select'));
+document.getElementById('btn-h').addEventListener('click',()=>activateTool('hand'));
+document.getElementById('btn-z').addEventListener('click',()=>activateTool('zoom'));
+document.getElementById('btn-fit').addEventListener('click',fitAll);
+document.getElementById('btn-zi').addEventListener('click',()=>zoomTo(nextStep(scale,-1),null));
+document.getElementById('btn-zo').addEventListener('click',()=>zoomTo(nextStep(scale,1),null));
+document.getElementById('zoom-display').addEventListener('click',()=>zoomTo(1,null));
 
-document.getElementById('btn-select').addEventListener('click', () => activateTool('select'));
-document.getElementById('btn-hand').addEventListener('click',   () => activateTool('hand'));
-document.getElementById('btn-zoom').addEventListener('click',   () => activateTool('zoom'));
-document.getElementById('btn-fit').addEventListener('click', fitAll);
-document.getElementById('btn-zoom-in').addEventListener('click',  () => zoomToPoint(nextZoomLevel(scale, 1),  null));
-document.getElementById('btn-zoom-out').addEventListener('click', () => zoomToPoint(nextZoomLevel(scale, -1), null));
-document.getElementById('zoom-display').addEventListener('click', () => zoomToPoint(1, null));
-
-
-/* ══════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════
    INIT
-══════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════ */
 buildWeekGrid();
-buildLeaveCalendar();
-applyTransform();
-drawConnections();
-setTimeout(() => {
+buildLeave();
+buildKanban();
+buildSparkline();
+updateClock();
+calcUpdate();
+
+setTimeout(()=>{
+  buildTimeline();
   drawConnections();
-  drawMinimap();
-  fitView();
-}, 100);
+  applyT();
+  setTimeout(fitAll,50);
+},80);
 </script>
 </body>
 </html>

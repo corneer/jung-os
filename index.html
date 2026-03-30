@@ -65,21 +65,21 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
 #zoom-display:hover{color:var(--text);}
 
 /* ── Canvas ── */
-#canvas-wrap{position:fixed;top:48px;left:0;right:0;bottom:0;overflow:hidden;cursor:default;}
+#canvas-wrap{position:fixed;top:48px;left:0;right:0;bottom:0;overflow:hidden;cursor:default;
+  background-image:radial-gradient(circle,var(--dot) var(--dot-size),transparent var(--dot-size));
+  background-size:var(--dot-gap) var(--dot-gap);}
 #canvas-wrap.is-grabbing{cursor:grabbing!important;}
 #canvas{position:absolute;top:0;left:0;width:8000px;height:6000px;transform-origin:0 0;}
-#canvas::before{content:'';position:absolute;inset:0;
-  background-image:radial-gradient(circle,var(--dot) var(--dot-size),transparent var(--dot-size));
-  background-size:var(--dot-gap) var(--dot-gap);pointer-events:none;}
 #connections-svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;}
 .conn-path{fill:none;stroke:var(--border2);stroke-width:1.5;stroke-dasharray:4 4;opacity:.5;}
 
 /* ── Node label (zoom-invariant, above node) ── */
 .node-label{
   position:absolute;bottom:calc(100% + 8px);left:0;
-  font-family:'JungTimes',serif;font-size:15px;
-  color:var(--text2);white-space:nowrap;pointer-events:none;
-  transform-origin:left bottom;line-height:1.2;letter-spacing:.01em;
+  font-family:'AMKosmosMed','AMKosmos',sans-serif;font-size:13px;
+  color:var(--text3);white-space:nowrap;pointer-events:none;
+  transform-origin:left bottom;line-height:1.2;letter-spacing:.04em;
+  text-transform:uppercase;
 }
 /* ── Node base ── */
 .node{position:absolute;background:var(--surface);border:1px solid var(--border);
@@ -1453,6 +1453,7 @@ function applyT(){
   const dot=Math.max(.5,1.5*Math.sqrt(scale));
   document.documentElement.style.setProperty('--dot-gap',gap+'px');
   document.documentElement.style.setProperty('--dot-size',dot+'px');
+  wrap.style.backgroundPosition=`${tx%gap}px ${ty%gap}px`;
   // Counter-scale labels so they stay readable when zoomed out
   const ls=Math.max(1,1/scale);
   document.querySelectorAll('.node-label').forEach(l=>{

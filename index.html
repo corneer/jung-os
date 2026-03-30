@@ -74,10 +74,17 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
 #connections-svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;}
 .conn-path{fill:none;stroke:var(--border2);stroke-width:1.5;stroke-dasharray:4 4;opacity:.5;}
 
+/* ── Node label (zoom-invariant, above node) ── */
+.node-label{
+  position:absolute;bottom:calc(100% + 8px);left:0;
+  font-family:'JungTimes',serif;font-size:15px;
+  color:var(--text2);white-space:nowrap;pointer-events:none;
+  transform-origin:left bottom;line-height:1.2;letter-spacing:.01em;
+}
 /* ── Node base ── */
 .node{position:absolute;background:var(--surface);border:1px solid var(--border);
   border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.4);
-  transition:box-shadow .15s,opacity .15s;}
+  transition:box-shadow .15s,opacity .15s;overflow:visible;}
 .node:hover{box-shadow:0 8px 32px rgba(0,0,0,.6),0 0 0 1px var(--border2);}
 .node.selected{box-shadow:0 8px 32px rgba(0,0,0,.6),0 0 0 2px var(--blue);}
 .node.is-collapsed .node-body{display:none!important;}
@@ -452,7 +459,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
 <svg id="connections-svg"></svg>
 
 <!-- ══ NODE: DASHBOARD ══════════════════════════════════════════ -->
-<div class="node dashboard-node" id="nd" style="left:180px;top:180px">
+<div class="node dashboard-node" id="nd" style="left:180px;top:180px"><div class="node-label">Dashboard</div>
   <div class="node-header" data-nid="nd">
     <div class="node-icon" style="background:rgba(139,92,246,.15)">⚡</div>
     <div class="node-meta"><div class="node-title">Dashboard</div><div class="node-subtitle">Jung · Översikt</div></div>
@@ -514,7 +521,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
 </div>
 
 <!-- ══ NODE: AKTIVA PROJEKT (TIMELINE) ═══════════════════════════ -->
-<div class="node timeline-node" id="ntl" style="left:1040px;top:180px">
+<div class="node timeline-node" id="ntl" style="left:1040px;top:180px"><div class="node-label">Aktiva projekt</div>
   <div class="node-header" data-nid="ntl">
     <div class="node-icon" style="background:rgba(45,158,110,.15)">📊</div>
     <div class="node-meta"><div class="node-title">Aktiva projekt · Tidslinje</div><div class="node-subtitle">2026 · 167 projekt · 8 kunder</div></div>
@@ -535,7 +542,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
 </div>
 
 <!-- ══ NODE: VECKOVY ══════════════════════════════════════════════ -->
-<div class="node week-node" id="nwk" style="left:180px;top:760px">
+<div class="node week-node" id="nwk" style="left:180px;top:760px"><div class="node-label">Veckovy</div>
   <div class="node-header" data-nid="nwk">
     <div class="node-icon" style="background:rgba(58,123,213,.15)">📅</div>
     <div class="node-meta"><div class="node-title">Veckovy · v.14</div><div class="node-subtitle">Joel Cornéer · 31 mar – 4 apr</div></div>
@@ -552,7 +559,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
 </div>
 
 <!-- ══ NODE: RESURSBELÄGGNING ═════════════════════════════════════ -->
-<div class="node resources-node" id="nrs" style="left:700px;top:760px">
+<div class="node resources-node" id="nrs" style="left:700px;top:760px"><div class="node-label">Resurser</div>
   <div class="node-header" data-nid="nrs">
     <div class="node-icon" style="background:rgba(212,146,26,.15)">👥</div>
     <div class="node-meta"><div class="node-title">Resursbeläggning</div><div class="node-subtitle">Närmaste månaden · 38 aktiva</div></div>
@@ -574,7 +581,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
 </div>
 
 <!-- ══ NODE: SEMESTER & FRÅNVARO ═════════════════════════════════ -->
-<div class="node leave-node" id="nlv" style="left:1300px;top:760px">
+<div class="node leave-node" id="nlv" style="left:1300px;top:760px"><div class="node-label">Semester & Frånvaro</div>
   <div class="node-header" data-nid="nlv">
     <div class="node-icon" style="background:rgba(139,92,246,.15)">🏖</div>
     <div class="node-meta"><div class="node-title">Semester & Frånvaro</div><div class="node-subtitle">2026 · Hela året</div></div>
@@ -598,7 +605,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
 </div>
 
 <!-- ══ NODE: SNABBKALKYL ══════════════════════════════════════════ -->
-<div class="node calc-node" id="nck" style="left:180px;top:1280px">
+<div class="node calc-node" id="nck" style="left:180px;top:1280px"><div class="node-label">Snabbkalkyl</div>
   <div class="node-header" data-nid="nck">
     <div class="node-icon" style="background:rgba(212,146,26,.15)">🧮</div>
     <div class="node-meta"><div class="node-title">Snabbkalkyl</div><div class="node-subtitle">Snabb projektuppskattning</div></div>
@@ -630,7 +637,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
 </div>
 
 <!-- ══ NODE: NEW BIZ PIPELINE ════════════════════════════════════ -->
-<div class="node newbiz-node" id="nnb" style="left:600px;top:1280px">
+<div class="node newbiz-node" id="nnb" style="left:600px;top:1280px"><div class="node-label">New Biz Pipeline</div>
   <div class="node-header" data-nid="nnb">
     <div class="node-icon" style="background:rgba(45,158,110,.15)">🚀</div>
     <div class="node-meta"><div class="node-title">New Biz · Pipeline</div><div class="node-subtitle">Q1 2026 · 14 leads · 3,2 Mkr</div></div>
@@ -644,7 +651,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
 </div>
 
 <!-- ══ NODE: AI-ASSISTENT ═════════════════════════════════════════ -->
-<div class="node ai-node" id="nai" style="left:1340px;top:1280px">
+<div class="node ai-node" id="nai" style="left:1340px;top:1280px"><div class="node-label">AI-assistent</div>
   <div class="node-header" data-nid="nai">
     <div class="node-icon" style="background:rgba(139,92,246,.15)">✦</div>
     <div class="node-meta"><div class="node-title">AI-assistent</div><div class="node-subtitle">Jung Intelligence</div></div>
@@ -666,7 +673,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
 </div>
 
 <!-- ══ NODE: PROGNOSER ════════════════════════════════════════════ -->
-<div class="node prog-node" id="npg" style="left:180px;top:1900px">
+<div class="node prog-node" id="npg" style="left:180px;top:1900px"><div class="node-label">Prognoser</div>
   <div class="node-header" data-nid="npg">
     <div class="node-icon" style="background:rgba(45,158,110,.15)">📈</div>
     <div class="node-meta"><div class="node-title">Prognoser</div><div class="node-subtitle">Hantera alla ekonomiska prognoser</div></div>
@@ -828,7 +835,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
 </div>
 
 <!-- ══ NODE: WISHLIST ══════════════════════════════════════════ -->
-<div class="node" id="nwl" style="left:1020px;top:1900px;width:400px">
+<div class="node" id="nwl" style="left:1020px;top:1900px;width:400px"><div class="node-label">Önske-lista</div>
   <div class="node-header" data-nid="nwl">
     <div class="node-icon" style="background:rgba(139,92,246,.15)">⭐</div>
     <div class="node-meta"><div class="node-title">Önske-lista</div><div class="node-subtitle">Funktioner att bygga</div></div>
@@ -1446,6 +1453,11 @@ function applyT(){
   const dot=Math.max(.5,1.5*Math.sqrt(scale));
   document.documentElement.style.setProperty('--dot-gap',gap+'px');
   document.documentElement.style.setProperty('--dot-size',dot+'px');
+  // Counter-scale labels so they stay readable when zoomed out
+  const ls=Math.max(1,1/scale);
+  document.querySelectorAll('.node-label').forEach(l=>{
+    l.style.transform=`scale(${ls})`;
+  });
 }
 function zoomTo(ns,pt){
   ns=Math.min(MAX_S,Math.max(MIN_S,ns));

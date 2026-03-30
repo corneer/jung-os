@@ -1,0 +1,45 @@
+# Jung OS — Cursor regler
+
+## Vad är projektet
+Jung OS är en single-file webbapp (`index.html`) för resursplanering, projekthantering och tidsplanering för byrån Jung Relations. Ingen bundler, inget framework — all kod i en fil.
+
+## Teknik
+- Ren HTML/CSS/JavaScript, allt i `index.html`
+- Infinite canvas med Figma-identiska kontroller (pan/zoom/Space+drag)
+- Nod-baserat UI — varje feature är en flytande, dragbar nod
+- Fonter: AMKosmos Regular (data), AMKosmos Medium (labels), JungTimes (rubriker/klocka)
+- Mörkt tema default, ljust tema via `data-theme="light"` på `<html>`
+- GitHub Pages: https://corneer.github.io/jung-os/ (lösenord: 2580)
+
+## Kodregler
+- Ändra ALDRIG `index.html` till flera filer — allt ska vara i en fil
+- Använd CSS custom properties (--bg, --surface, --text osv.) för färger
+- Fonter: `font-family:'JungTimes',serif` för rubriker/siffror, `font-family:'AMKosmosMed',sans-serif` för labels/knappar, `font-family:'AMKosmos',sans-serif` för brödtext/data
+- Nya noder ska ha `.node-label` div som första child (visas ovanför noden, zoom-invariant)
+- Alla noder ska ha `.node-header[data-nid]`, `.node-actions` med collapse/snap/fullscreen-knappar
+- Committa med: `git add index.html && git commit -m "..." && git push`
+
+## Data-struktur
+- `TL_DATA` — tidslinjeprojekt per kund
+- `PROJECTS` — projekter för veckovy
+- `KANBAN_DATA` — New Biz pipeline-kolumner
+- `PROG_ROWS` — prognosrader
+- `WISHLIST` — önskelista (in-memory)
+
+## Canvas-system
+- `tx, ty, scale` — canvas transform state
+- `applyT()` — applicerar transform, uppdaterar zoom-display, bakgrundsposition och label-counter-scale
+- `zoomTo(newScale, point)` — zoom mot punkt
+- `fitAll()` — zooma för att se alla noder
+
+## Viktiga funktioner
+- `enterFullscreen(node)` / `exitFullscreen()` — helskärm för nod
+- `snapNode(node)` — snäpp till vänster/höger halva av skärmen
+- `openEditModal(groupIdx, projIdx)` — öppna redigera-projekt-modal
+- `buildTimeline()` — bygg om Gantt-tidslinjen
+- `buildWishlist()` — bygg om önske-listan
+
+## Git-workflow
+- Branch: `main`
+- Remote: https://github.com/corneer/jung-os.git
+- Deploy: GitHub Pages (automatisk från main)

@@ -24,6 +24,10 @@
 })();
 </script>
 <style>
+@font-face{font-family:'AMKosmos';src:url('fonts/AMKosmosOne-Regular.woff2') format('woff2');font-weight:400;font-style:normal;}
+@font-face{font-family:'AMKosmos';src:url('fonts/AMKosmosOne-Italic.woff2') format('woff2');font-weight:400;font-style:italic;}
+@font-face{font-family:'AMKosmosMed';src:url('fonts/AMKosmosJung-Medium.otf') format('opentype');font-weight:500;}
+@font-face{font-family:'JungTimes';src:url('fonts/JungTimes.otf') format('opentype');font-weight:400;}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#111113;--surface:#1a1a1f;--surface2:#222228;--surface3:#28282f;
@@ -32,9 +36,18 @@
   --accent:#e8304a;--green:#2d9e6e;--amber:#d4921a;--blue:#3a7bd5;--purple:#8b5cf6;
   --dot:#252530;--dot-size:1.5px;--dot-gap:24px;
 }
+[data-theme="light"]{
+  --bg:#f5f5f7;--surface:#ffffff;--surface2:#f0f0f4;--surface3:#e8e8ee;
+  --border:#d8d8e0;--border2:#c4c4d0;
+  --text:#111118;--text2:#50506a;--text3:#9090a8;
+  --dot:#d0d0dc;
+}
 html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
-  font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
+  font-family:'AMKosmos',system-ui,sans-serif;
   font-size:13px;color:var(--text);user-select:none;}
+.node-title,.dash-num,.prog-kpi-val,.calc-result-num{font-family:'JungTimes',serif;}
+.calc-label,.kboard-hdr,.wg-head,.badge,.tb-btn,.ptab{font-family:'AMKosmosMed','AMKosmos',sans-serif;}
+#clock-display{font-family:'JungTimes',serif;letter-spacing:-.01em;}
 
 /* ── Toolbar ── */
 #toolbar{position:fixed;top:0;left:0;right:0;height:48px;background:rgba(17,17,19,0.92);
@@ -273,10 +286,35 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
   padding:7px 12px;font-size:12px;transition:background .12s;}
 .ai-send:hover{background:#2d6abf;}
 
-/* ══ MINIMAP ══ */
-#minimap{position:fixed;right:14px;bottom:14px;width:168px;height:110px;
-  background:rgba(22,22,26,.95);border:1px solid var(--border);border-radius:8px;
-  overflow:hidden;z-index:900;}
+/* ══ BOTTOM BAR ══ */
+#bottom-bar{position:fixed;bottom:0;left:0;right:0;height:40px;
+  background:rgba(17,17,19,0.92);backdrop-filter:blur(12px);
+  border-top:1px solid var(--border);z-index:1000;
+  display:flex;align-items:center;padding:0 12px;gap:8px;}
+[data-theme="light"] #bottom-bar{background:rgba(245,245,247,0.92);}
+#profile-card{display:flex;align-items:center;gap:8px;margin-right:auto;cursor:pointer;
+  border-radius:7px;padding:4px 8px;transition:background .12s;}
+#profile-card:hover{background:var(--surface2);}
+#profile-avatar{width:24px;height:24px;border-radius:50%;background:var(--accent);
+  display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;
+  color:#fff;flex-shrink:0;font-family:'AMKosmosMed',sans-serif;}
+#profile-name{font-size:11px;font-weight:500;color:var(--text);}
+#profile-status{font-size:10px;color:var(--green);display:flex;align-items:center;gap:3px;}
+#profile-status::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--green);flex-shrink:0;}
+.bb-sep{width:1px;height:18px;background:var(--border);margin:0 2px;}
+.bb-btn{background:transparent;border:1px solid transparent;border-radius:5px;
+  color:var(--text2);cursor:pointer;padding:4px 8px;font-size:11px;font-family:'AMKosmosMed',sans-serif;
+  transition:all .1s;display:flex;align-items:center;gap:3px;}
+.bb-btn:hover{background:var(--surface2);color:var(--text);border-color:var(--border);}
+#bb-zoom-pct{min-width:38px;text-align:center;font-size:11px;color:var(--text3);
+  cursor:pointer;padding:4px 6px;border-radius:5px;font-family:'AMKosmosMed',sans-serif;}
+#bb-zoom-pct:hover{background:var(--surface2);color:var(--text);}
+#bb-theme{width:28px;height:16px;border-radius:99px;border:1px solid var(--border2);
+  background:var(--surface2);cursor:pointer;position:relative;transition:background .2s;flex-shrink:0;}
+#bb-theme.on{background:var(--blue);border-color:var(--blue);}
+#bb-theme::after{content:'';position:absolute;top:2px;left:2px;width:10px;height:10px;
+  border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.3);}
+#bb-theme.on::after{transform:translateX(12px);}
 
 /* ══ CONTEXT MENU ══ */
 #ctx-menu{position:fixed;background:var(--surface);border:1px solid var(--border2);
@@ -782,11 +820,77 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
   </div>
 </div>
 
+<!-- ══ NODE: WISHLIST ══════════════════════════════════════════ -->
+<div class="node" id="nwl" style="left:1020px;top:1900px;width:400px">
+  <div class="node-header" data-nid="nwl">
+    <div class="node-icon" style="background:rgba(139,92,246,.15)">⭐</div>
+    <div class="node-meta"><div class="node-title">Önske-lista</div><div class="node-subtitle">Funktioner att bygga</div></div>
+    <div class="node-actions">
+      <button class="na-btn" data-action="collapse"><svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1l3.5 4L8 1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+      <button class="na-btn" data-action="snap"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x=".5" y=".5" width="4" height="9" rx="1" stroke="currentColor"/><rect x="5.5" y=".5" width="4" height="9" rx="1" stroke="currentColor"/></svg></button>
+      <button class="na-btn" data-action="fullscreen"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 4V1h3M6 1h3v3M9 6v3H6M4 9H1V6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></button>
+    </div>
+  </div>
+  <div class="node-body" style="padding:0">
+    <div style="padding:10px 14px 6px;display:flex;gap:6px">
+      <input id="wl-input" placeholder="Beskriv en funktion du önskar…" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;padding:7px 10px;outline:none;font-family:'AMKosmos',sans-serif" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'"/>
+      <button id="wl-add" style="background:var(--blue);border:none;border-radius:7px;color:#fff;cursor:pointer;padding:7px 12px;font-size:12px;font-family:'AMKosmosMed',sans-serif;white-space:nowrap">+ Lägg till</button>
+    </div>
+    <div id="wl-list" style="max-height:340px;overflow-y:auto;padding:4px 0 8px"></div>
+  </div>
+</div>
+
 </div><!-- /canvas -->
 </div><!-- /canvas-wrap -->
 
-<!-- Minimap -->
-<div id="minimap"><canvas id="mm" width="166" height="108"></canvas></div>
+<!-- Bottom bar -->
+<div id="bottom-bar">
+  <div id="profile-card">
+    <div id="profile-avatar">JC</div>
+    <div>
+      <div id="profile-name">Joel Cornéer</div>
+      <div id="profile-status">Tillgänglig</div>
+    </div>
+  </div>
+  <div class="bb-sep"></div>
+  <button class="bb-btn" id="bb-zi">−</button>
+  <span id="bb-zoom-pct" title="Återställ 100%">100%</span>
+  <button class="bb-btn" id="bb-zo">+</button>
+  <div class="bb-sep"></div>
+  <span style="font-size:10px;color:var(--text3);font-family:'AMKosmosMed',sans-serif">Tema</span>
+  <div id="bb-theme" title="Ljust/mörkt läge"></div>
+</div>
+
+<!-- Edit project modal -->
+<div id="edit-modal" style="display:none;position:fixed;inset:0;z-index:2100;align-items:center;justify-content:center">
+  <div id="edit-backdrop" style="position:absolute;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px)"></div>
+  <div id="edit-panel" style="position:relative;background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:24px;width:440px;max-width:95vw;box-shadow:0 24px 60px rgba(0,0,0,.6);z-index:1">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div style="font-family:'JungTimes',serif;font-size:18px">Redigera projekt</div>
+      <button id="edit-close" style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:18px;line-height:1;padding:2px 6px">&times;</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div><label style="font-size:10px;color:var(--text3);font-family:'AMKosmosMed',sans-serif;letter-spacing:.04em;text-transform:uppercase;display:block;margin-bottom:4px">Projektnamn</label>
+        <input id="ep-name" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:13px;padding:8px 10px;outline:none;font-family:'AMKosmos',sans-serif" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'"/></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="font-size:10px;color:var(--text3);font-family:'AMKosmosMed',sans-serif;letter-spacing:.04em;text-transform:uppercase;display:block;margin-bottom:4px">Startdatum</label>
+          <input id="ep-start" type="date" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;padding:8px 10px;outline:none;font-family:'AMKosmos',sans-serif" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'"/></div>
+        <div><label style="font-size:10px;color:var(--text3);font-family:'AMKosmosMed',sans-serif;letter-spacing:.04em;text-transform:uppercase;display:block;margin-bottom:4px">Slutdatum</label>
+          <input id="ep-end" type="date" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;padding:8px 10px;outline:none;font-family:'AMKosmos',sans-serif" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'"/></div>
+      </div>
+      <div><label style="font-size:10px;color:var(--text3);font-family:'AMKosmosMed',sans-serif;letter-spacing:.04em;text-transform:uppercase;display:block;margin-bottom:4px">Kund</label>
+        <input id="ep-client" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:13px;padding:8px 10px;outline:none;font-family:'AMKosmos',sans-serif" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'"/></div>
+      <div><label style="font-size:10px;color:var(--text3);font-family:'AMKosmosMed',sans-serif;letter-spacing:.04em;text-transform:uppercase;display:block;margin-bottom:4px">Status</label>
+        <select id="ep-status" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:13px;padding:8px 10px;outline:none;cursor:pointer;font-family:'AMKosmos',sans-serif">
+          <option>Pågående</option><option>Planerat</option><option>Klart</option><option>Pausat</option>
+        </select></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end">
+      <button id="edit-cancel" style="background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;font-size:12px;font-family:'AMKosmosMed',sans-serif;padding:9px 18px">Avbryt</button>
+      <button id="edit-save" style="background:var(--blue);border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:12px;font-family:'AMKosmosMed',sans-serif;padding:9px 18px">Spara ändringar</button>
+    </div>
+  </div>
+</div>
 
 <!-- Context menu -->
 <div id="ctx-menu">
@@ -1023,7 +1127,13 @@ function buildTimeline(){
       if(bw>50){
         bar.innerHTML=`<span class="tl-bar-label" style="color:${group.color}">${proj.name}</span>`;
       }
-      bar.title=`${proj.name}\n${proj.start} → ${proj.end}`;
+      bar.title=`${proj.name}\n${proj.start} → ${proj.end}\nKlicka för att redigera`;
+      bar.addEventListener('click',e=>{
+        e.stopPropagation();
+        const gi=TL_DATA.indexOf(group);
+        const pi=group.projects.indexOf(proj);
+        openEditModal(gi,pi);
+      });
       row.appendChild(bar);
 
       // Milestones
@@ -1321,12 +1431,14 @@ function nextStep(s,dir){
 }
 function applyT(){
   canvas.style.transform=`translate(${tx}px,${ty}px) scale(${scale})`;
-  document.getElementById('zoom-display').textContent=Math.round(scale*100)+'%';
+  const pct=Math.round(scale*100)+'%';
+  document.getElementById('zoom-display').textContent=pct;
+  if(document.getElementById('bb-zoom-pct'))
+    document.getElementById('bb-zoom-pct').textContent=pct;
   const gap=Math.max(6,24*scale);
   const dot=Math.max(.5,1.5*Math.sqrt(scale));
   document.documentElement.style.setProperty('--dot-gap',gap+'px');
   document.documentElement.style.setProperty('--dot-size',dot+'px');
-  drawMinimap();
 }
 function zoomTo(ns,pt){
   ns=Math.min(MAX_S,Math.max(MIN_S,ns));
@@ -1497,27 +1609,130 @@ function drawConnections(){
 }
 
 /* ═══════════════════════════════════════════════════════════
-   MINIMAP
+   BOTTOM BAR
 ═══════════════════════════════════════════════════════════ */
-function drawMinimap(){
-  const mm=document.getElementById('mm');
-  const ctx=mm.getContext('2d');
-  const W=mm.width,H=mm.height;
-  ctx.clearRect(0,0,W,H);
-  ctx.fillStyle='#111113';ctx.fillRect(0,0,W,H);
-  const WW=8000,WH=6000,sx=W/WW,sy=H/WH;
-  document.querySelectorAll('#canvas .node').forEach(n=>{
-    const x=parseFloat(n.style.left)*sx,y=parseFloat(n.style.top)*sy;
-    const w=n.offsetWidth*sx,h=n.offsetHeight*sy;
-    ctx.fillStyle='#2e2e38';
-    ctx.beginPath();ctx.roundRect(x,y,Math.max(2,w),Math.max(1,h),1);ctx.fill();
-  });
-  const r=wrap.getBoundingClientRect();
-  const vx=(-tx/scale)*sx,vy=(-ty/scale)*sy;
-  const vw=(r.width/scale)*sx,vh=(r.height/scale)*sy;
-  ctx.strokeStyle='rgba(58,123,213,.8)';ctx.lineWidth=1;
-  ctx.strokeRect(vx,vy,vw,vh);
+function updateBBZoom(){
+  document.getElementById('bb-zoom-pct').textContent=Math.round(scale*100)+'%';
 }
+document.getElementById('bb-zi').addEventListener('click',()=>zoomTo(nextStep(scale,-1),null));
+document.getElementById('bb-zo').addEventListener('click',()=>zoomTo(nextStep(scale,1),null));
+document.getElementById('bb-zoom-pct').addEventListener('click',()=>zoomTo(1,null));
+
+// Dark/light toggle
+const bbTheme=document.getElementById('bb-theme');
+let isDark=true;
+bbTheme.addEventListener('click',()=>{
+  isDark=!isDark;
+  document.documentElement.setAttribute('data-theme',isDark?'':'light');
+  bbTheme.classList.toggle('on',!isDark);
+});
+
+/* ═══════════════════════════════════════════════════════════
+   WISHLIST
+═══════════════════════════════════════════════════════════ */
+const WISHLIST=[
+  {id:1,text:'Mobilanpassning med touch-stöd',votes:4,status:'planned'},
+  {id:2,text:'Export till PDF/Excel',votes:3,status:'idea'},
+  {id:3,text:'Notifikationer när projekt är försenade',votes:2,status:'idea'},
+];
+let wlNext=10;
+
+function buildWishlist(){
+  const list=document.getElementById('wl-list');
+  if(!list)return;
+  list.innerHTML='';
+  const sorted=[...WISHLIST].sort((a,b)=>b.votes-a.votes);
+  sorted.forEach(item=>{
+    const statusColor={idea:'var(--text3)',planned:'var(--blue)',done:'var(--green)'}[item.status]||'var(--text3)';
+    const statusLabel={idea:'Idé',planned:'Planerat',done:'Klart'}[item.status]||'Idé';
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid rgba(46,46,56,.4);cursor:default';
+    row.innerHTML=`
+      <button data-wid="${item.id}" class="wl-vote" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text2);cursor:pointer;padding:3px 7px;font-size:11px;font-family:'AMKosmosMed',sans-serif;min-width:32px;transition:all .1s" title="Rösta">▲ ${item.votes}</button>
+      <span style="flex:1;font-size:12px;color:var(--text)">${item.text}</span>
+      <span style="font-size:10px;color:${statusColor};font-family:'AMKosmosMed',sans-serif;white-space:nowrap">${statusLabel}</span>`;
+    list.appendChild(row);
+  });
+  list.querySelectorAll('.wl-vote').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const item=WISHLIST.find(w=>w.id===parseInt(btn.dataset.wid));
+      if(item){item.votes++;buildWishlist();}
+    });
+  });
+}
+
+document.getElementById('wl-add')?.addEventListener('click',()=>{
+  const inp=document.getElementById('wl-input');
+  const txt=inp.value.trim();
+  if(!txt)return;
+  WISHLIST.push({id:++wlNext,text:txt,votes:1,status:'idea'});
+  inp.value='';
+  buildWishlist();
+});
+document.getElementById('wl-input')?.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){document.getElementById('wl-add').click();}
+});
+
+/* ═══════════════════════════════════════════════════════════
+   EDIT PROJECT MODAL
+═══════════════════════════════════════════════════════════ */
+let editTarget=null; // {group, proj} indexes
+
+function openEditModal(groupIdx,projIdx){
+  const proj=TL_DATA[groupIdx].projects[projIdx];
+  editTarget={groupIdx,projIdx};
+  document.getElementById('ep-name').value=proj.name;
+  document.getElementById('ep-start').value=proj.start;
+  document.getElementById('ep-end').value=proj.end;
+  document.getElementById('ep-client').value=TL_DATA[groupIdx].client;
+  document.getElementById('ep-status').value='Pågående';
+  const m=document.getElementById('edit-modal');
+  m.style.display='flex';
+  setTimeout(()=>document.getElementById('ep-name').focus(),50);
+}
+
+function closeEditModal(){
+  document.getElementById('edit-modal').style.display='none';
+  editTarget=null;
+}
+
+document.getElementById('edit-close').addEventListener('click',closeEditModal);
+document.getElementById('edit-cancel').addEventListener('click',closeEditModal);
+document.getElementById('edit-backdrop').addEventListener('click',closeEditModal);
+document.getElementById('edit-save').addEventListener('click',()=>{
+  if(!editTarget)return;
+  const {groupIdx,projIdx}=editTarget;
+  const proj=TL_DATA[groupIdx].projects[projIdx];
+  proj.name=document.getElementById('ep-name').value||proj.name;
+  proj.start=document.getElementById('ep-start').value||proj.start;
+  proj.end=document.getElementById('ep-end').value||proj.end;
+  closeEditModal();
+  // Rebuild timeline to reflect changes
+  buildTimeline();
+  drawConnections();
+});
+window.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&document.getElementById('edit-modal').style.display==='flex')closeEditModal();
+});
+
+/* ═══════════════════════════════════════════════════════════
+   DOUBLE-CLICK → ZOOM TO NODE
+═══════════════════════════════════════════════════════════ */
+document.querySelectorAll('.node-header[data-nid]').forEach(hdr=>{
+  hdr.addEventListener('dblclick',e=>{
+    if(e.target.closest('.na-btn'))return;
+    const node=document.getElementById(hdr.dataset.nid);
+    if(!node||node.classList.contains('is-fullscreen'))return;
+    const x=parseFloat(node.style.left)||0;
+    const y=parseFloat(node.style.top)||0;
+    const w=node.offsetWidth, h=node.offsetHeight;
+    const r=wrap.getBoundingClientRect();
+    scale=1;
+    tx=r.width/2-(x+w/2);
+    ty=r.height/2-(y+h/2);
+    applyT();
+  });
+});
 
 /* ═══════════════════════════════════════════════════════════
    CONTEXT MENU
@@ -1602,6 +1817,9 @@ buildSparkline();
 updateClock();
 calcUpdate();
 buildProgTable();
+buildWishlist();
+// Canvas needs extra bottom padding for bottom bar
+document.getElementById('canvas-wrap').style.bottom='40px';
 
 setTimeout(()=>{
   buildTimeline();
